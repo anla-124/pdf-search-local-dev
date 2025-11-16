@@ -1144,7 +1144,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
           )}
 
           {filteredDocuments.length === 0 ? (
-            <Card>
+            <Card className="card-enhanced">
               <CardContent className="flex flex-col items-center justify-center p-12">
                 <FileText className="h-12 w-12 text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
