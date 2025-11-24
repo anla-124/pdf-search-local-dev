@@ -10,5 +10,5 @@ jobs:
       - name: Call cron job endpoint
         run: |
           curl --request GET \
-          --url 'https://pdf-searcher-seven.vercel.app' \
+          --url '${{ secrets.APP_URL }}/api/cron/process-jobs' \
           --header 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'

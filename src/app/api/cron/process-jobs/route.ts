@@ -5,6 +5,34 @@ import { processDocument } from '@/lib/document-processing'
 import { logger, withRequestContext, generateCorrelationId } from '@/lib/logger'
 import type { GenericSupabaseSchema } from '@/types/supabase'
 
+// Job timeout configuration - 30 minutes max per job
+const JOB_TIMEOUT_MS = 30 * 60 * 1000
+
+/**
+ * Wraps a promise with a timeout for production resilience
+ * Prevents jobs from hanging indefinitely due to external API issues
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, jobId: string, documentId: string): Promise<T> {
+  let timeoutHandle: NodeJS.Timeout
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      logger.error('Job timeout exceeded', new Error('Processing timeout'), {
+        jobId,
+        documentId,
+        timeoutMs,
+        component: 'cron-job'
+      })
+      reject(new Error(`Job timeout: Processing exceeded ${timeoutMs}ms (${timeoutMs/60000} minutes)`))
+    }, timeoutMs)
+  })
+
+  return Promise.race([
+    promise.finally(() => clearTimeout(timeoutHandle)),
+    timeoutPromise
+  ])
+}
+
 type JobStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled'
 
 type ProcessingMethod = 'sync' | 'batch'
@@ -31,6 +59,7 @@ interface DocumentJobRecord {
   started_at?: string | null
   completed_at?: string | null
   result_summary?: Record<string, unknown> | null
+  metadata?: Record<string, unknown> | null
 }
 
 type ServiceSupabase = SupabaseClient<GenericSupabaseSchema>
@@ -101,39 +130,17 @@ async function processJob(
   })
 
   try {
-    // Only update to processing if job is queued (not already processing)
-    if (job.status === 'queued') {
-      // Mark job as processing
-      const { error: updateJobError } = await supabase
-        .from('document_jobs')
-        .update({ 
-          status: 'processing', 
-          started_at: new Date().toISOString(),
-          attempts: job.attempts + 1
-        })
-        .eq('id', job.id)
+    // Job status was already set to 'processing' by claim_jobs_for_processing()
+    // Just need to update the document status
+    const { error: updateDocError } = await supabase
+      .from('documents')
+      .update({ status: 'processing' })
+      .eq('id', job.document_id)
 
-      if (updateJobError) {
-        logger.error('Error updating job status', updateJobError, { jobId: job.id })
-        throw new Error('Failed to update job status')
-      }
-
-      // Mark document as processing
-      const { error: updateDocError } = await supabase
-        .from('documents')
-        .update({ status: 'processing' })
-        .eq('id', job.document_id)
-
-      if (updateDocError) {
-        logger.error('Error updating document status', updateDocError, { 
-          jobId: job.id, 
-          documentId: job.document_id 
-        })
-      }
-    } else {
-      logger.info('Job already in processing status, checking batch operation', { 
-        jobId: job.id, 
-        status: job.status 
+    if (updateDocError) {
+      logger.error('Error updating document status', updateDocError, {
+        jobId: job.id,
+        documentId: job.document_id
       })
     }
 
@@ -244,7 +251,6 @@ async function processJob(
           })
           
           // CRITICAL FIX: Use the direct document if it exists
-          // TODO(monitoring): This indicates a database/RLS issue - track frequency
           logger.warn('JOIN_FALLBACK_TRIGGERED: Using direct document lookup as workaround for JOIN issue', {
             jobId: job.id,
             documentId: job.document_id,
@@ -497,7 +503,7 @@ export async function GET(request: NextRequest) {
         path: '/api/cron/process-jobs'
       })
 
-      // Verify this is called by Vercel Cron
+      // Verify this is called by authorized cron service
       const authHeader = request.headers.get('authorization')
       if (authHeader !== `Bearer ${process.env['CRON_SECRET']}`) {
         logger.warn('Unauthorized cron job access attempt', { 
@@ -586,34 +592,72 @@ export async function GET(request: NextRequest) {
     // CRITICAL FIX: Use inner join to ensure document exists
     // Paid tiers: raise MAX_CONCURRENT_DOCUMENTS (and matching pool limits) so availableSlots grows.
     const fetchLimit = unlimitedMode ? 1000 : Math.max(availableSlots, 1)
-    const { data: jobs, error: jobsError } = await supabase
-      .from('document_jobs')
-      .select(`
-        id,
-        document_id,
-        user_id,
-        status,
-        attempts,
-        max_attempts,
-        batch_operation_id,
-        processing_method,
-        started_at,
-        result_summary,
-        metadata,
-        documents!inner (
-          id,
-          title,
-          filename,
-          file_path,
-          file_size,
-          user_id
-        )
-      `)
-      .in('status', ['queued', 'processing'])
-      .order('priority', { ascending: false })
-      .order('created_at', { ascending: true })
-      .limit(fetchLimit) // Limit fetches to the number of available slots (or 1000 in unlimited mode)
-      .returns<DocumentJobRecord[]>()
+    // Use atomic job claiming with optimized single-query fetch
+    const workerId = generateCorrelationId()
+
+    type ClaimedJobRow = {
+      id: string
+      document_id: string
+      user_id: string
+      status: JobStatus
+      attempts: number
+      processing_method?: ProcessingMethod | null
+      batch_operation_id?: string | null
+      started_at?: string | null
+      completed_at?: string | null
+      result_summary?: Record<string, unknown> | null
+      metadata?: Record<string, unknown> | null
+      max_attempts?: number | null
+      // Document fields from optimized RPC
+      doc_title?: string | null
+      doc_filename?: string | null
+      doc_file_path?: string | null
+      doc_file_size?: number | null
+      doc_user_id?: string | null
+    }
+
+    const { data: claimedJobs, error: claimError } = await supabase
+      .rpc('claim_jobs_for_processing', {
+        limit_count: fetchLimit,
+        worker_id: workerId
+      })
+
+    // Map the optimized RPC result to DocumentJobRecord format
+    let jobs: DocumentJobRecord[] = []
+    const jobsError = claimError
+
+    if (!claimError && claimedJobs && Array.isArray(claimedJobs) && claimedJobs.length > 0) {
+      // Transform the single-query result into expected format
+      jobs = (claimedJobs as ClaimedJobRow[]).map((job: ClaimedJobRow) => ({
+        id: job.id,
+        document_id: job.document_id,
+        user_id: job.user_id,
+        status: job.status,
+        attempts: job.attempts,
+        processing_method: job.processing_method,
+        batch_operation_id: job.batch_operation_id,
+        started_at: job.started_at,
+        completed_at: job.completed_at,
+        result_summary: job.result_summary,
+        metadata: job.metadata,
+        max_attempts: job.max_attempts,
+        // Map document fields from RPC result
+        documents: {
+          id: job.document_id,
+          title: job.doc_title,
+          filename: job.doc_filename,
+          file_path: job.doc_file_path,
+          file_size: job.doc_file_size,
+          user_id: job.doc_user_id
+        }
+      })) as DocumentJobRecord[]
+
+      logger.info('Jobs claimed and fetched in single query', {
+        jobCount: jobs.length,
+        recoveredJobs: jobs.filter(j => j.metadata?.recovered === true).length,
+        component: 'cron-job'
+      })
+    }
 
     if (jobsError) {
       logger.error('Error fetching jobs with JOIN', jobsError, { component: 'cron-job' })
@@ -643,15 +687,15 @@ export async function GET(request: NextRequest) {
         .select('status, created_at')
         .order('created_at', { ascending: false })
         .limit(50)
-        .returns<QueueStatRecord[]>()
-      
+
+      const typedQueueStats = (queueStats || []) as QueueStatRecord[]
       const stats = {
-        total: queueStats?.length || 0,
-        queued: queueStats?.filter((j: QueueStatRecord) => j.status === 'queued').length || 0,
-        processing: queueStats?.filter((j: QueueStatRecord) => j.status === 'processing').length || 0,
-        completed: queueStats?.filter((j: QueueStatRecord) => j.status === 'completed').length || 0,
-        failed: queueStats?.filter((j: QueueStatRecord) => j.status === 'failed').length || 0,
-        cancelled: queueStats?.filter((j: QueueStatRecord) => j.status === 'cancelled').length || 0
+        total: typedQueueStats.length,
+        queued: typedQueueStats.filter((j: QueueStatRecord) => j.status === 'queued').length,
+        processing: typedQueueStats.filter((j: QueueStatRecord) => j.status === 'processing').length,
+        completed: typedQueueStats.filter((j: QueueStatRecord) => j.status === 'completed').length,
+        failed: typedQueueStats.filter((j: QueueStatRecord) => j.status === 'failed').length,
+        cancelled: typedQueueStats.filter((j: QueueStatRecord) => j.status === 'cancelled').length
       }
       
       logger.info('Queue status snapshot', {
@@ -699,16 +743,36 @@ export async function GET(request: NextRequest) {
     const slotsToUse = unlimitedMode ? jobs.length : Math.min(jobs.length, Math.max(availableSlots, 1))
     const jobsToProcess = jobs.slice(0, slotsToUse)
 
-    const results: Array<{ job: DocumentJobRecord; status: 'fulfilled' | 'rejected'; error?: unknown }> = []
+    // Process jobs in parallel with timeout enforcement
+    const jobPromises = jobsToProcess.map(job =>
+      withTimeout(
+        processJob(client, job),
+        JOB_TIMEOUT_MS,
+        job.id,
+        job.document_id
+      )
+        .then(() => ({
+          job,
+          status: 'fulfilled' as const
+        }))
+        .catch((error: unknown) => {
+          const isTimeout = error instanceof Error && error.message.includes('Job timeout')
+          logger.error('Job processing failed', error as Error, {
+            jobId: job.id,
+            documentId: job.document_id,
+            isTimeout,
+            component: 'cron-job'
+          })
+          return {
+            job,
+            status: 'rejected' as const,
+            error,
+            isTimeout
+          }
+        })
+    )
 
-    for (const job of jobsToProcess) {
-      try {
-        await processJob(client, job)
-        results.push({ job, status: 'fulfilled' })
-      } catch (error) {
-        results.push({ job, status: 'rejected', error })
-      }
-    }
+    const results = await Promise.all(jobPromises)
     
     const successful = results.filter(result => result.status === 'fulfilled').length
     const failed = results.length - successful

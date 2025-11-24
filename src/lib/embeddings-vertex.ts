@@ -4,75 +4,45 @@ import { getGoogleClientOptions } from '@/lib/google-credentials'
 import type { VertexAIEmbeddingResponse } from '@/types/external-apis'
 import { logger } from '@/lib/logger'
 
-const clientOptions = getGoogleClientOptions()
-const auth = new GoogleAuth({
-  ...clientOptions,
-  scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-})
-
 export async function generateVertexEmbeddings(text: string): Promise<number[]> {
   try {
     const cleanedText = text.replace(/\n/g, ' ').trim()
     const truncatedText = cleanedText.substring(0, 3072) // Vertex AI limit
-    
+
     if (!truncatedText) {
       throw new Error('Text is empty after cleaning')
     }
 
     logger.info('Generating Vertex AI embeddings', { textLength: truncatedText.length })
 
+    // Create fresh GoogleAuth client per request to prevent state corruption
+    const clientOptions = getGoogleClientOptions()
+    const auth = new GoogleAuth({
+      ...clientOptions,
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    })
+
     const client = await auth.getClient()
     const projectId = process.env['GOOGLE_CLOUD_PROJECT_ID']!
     
-    // Try the newer text-embedding model first
-    let url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/text-embedding-004:predict`
-    
-    let requestData = {
-      instances: [
-        {
-          content: truncatedText,
-          task_type: 'RETRIEVAL_DOCUMENT'
-        }
-      ]
-    }
-
-    try {
-      const response = await client.request({
-        url,
-        method: 'POST',
-        data: requestData
-      })
-
-      const embeddings = (response.data as VertexAIEmbeddingResponse)?.predictions?.[0]?.embeddings?.values
-      
-      if (embeddings && Array.isArray(embeddings)) {
-        return embeddings
-      }
-    } catch (modelError: unknown) {
-      const status = modelError instanceof Error && 'status' in modelError ? (modelError as { status: number }).status : 'unknown'
-      logger.warn('text-embedding-004 failed, trying gecko model', { status })
-
-      // Fallback to gecko model with different structure
-      url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/textembedding-gecko@001:predict`
-      
-      requestData = {
-        instances: [
-          {
-            content: truncatedText,
-            task_type: "RETRIEVAL_DOCUMENT"
-          }
-        ]
-      }
-    }
+    // Use text-embedding-004 model for generating embeddings
+    const url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/text-embedding-004:predict`
 
     const response = await client.request({
       url,
       method: 'POST',
-      data: requestData
+      data: {
+        instances: [
+          {
+            content: truncatedText,
+            task_type: 'RETRIEVAL_DOCUMENT'
+          }
+        ]
+      }
     })
 
     const embeddings = (response.data as VertexAIEmbeddingResponse)?.predictions?.[0]?.embeddings?.values
-    
+
     if (!embeddings || !Array.isArray(embeddings)) {
       throw new Error('No embeddings returned from Vertex AI')
     }

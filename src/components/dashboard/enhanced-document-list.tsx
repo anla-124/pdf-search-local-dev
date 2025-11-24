@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DatabaseDocument as Document } from '@/types/external-apis'
 import { Card, CardContent } from '@/components/ui/card'
@@ -150,6 +150,11 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
   // Enhanced processing status tracking
   const [documentStatuses, setDocumentStatuses] = useState<Map<string, DocumentStatus>>(new Map())
 
+  // Refs for polling optimization (prevent infinite restarts)
+  const documentsRef = useRef<Document[]>([])
+  const isPageVisibleRef = useRef(true)
+  const pollingStartTimesRef = useRef<Map<string, number>>(new Map())
+
   // Resizable columns
   const { columnWidths, handleMouseDown } = useResizableColumns({
     checkbox: 48,
@@ -164,6 +169,18 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const documentsPerPage = 10
+
+  // Track previous filter state to detect user-initiated changes vs background updates
+  const prevFiltersRef = useRef({
+    searchQuery,
+    statusFilter,
+    lawFirmFilter,
+    fundManagerFilter,
+    fundAdminFilter,
+    jurisdictionFilter,
+    sortBy,
+    sortOrder
+  })
 
   // Router for navigation
   const router = useRouter()
@@ -201,6 +218,28 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
     ))
     setEditingDocument(null)
   }
+
+  // Sync documents to ref for polling (prevents infinite effect restarts)
+  useEffect(() => {
+    documentsRef.current = documents
+  }, [documents])
+
+  // Track page visibility to pause polling when tab is inactive
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    // Initialize visibility state
+    isPageVisibleRef.current = !document.hidden
+
+    const handleVisibilityChange = () => {
+      isPageVisibleRef.current = !document.hidden
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   // Resolve user ID for realtime subscriptions
   useEffect(() => {
@@ -497,16 +536,51 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
   // Enhanced status polling for processing documents
   useEffect(() => {
     const trackedStatuses: Document['status'][] = ['uploading', 'queued', 'processing', 'error']
-    const processingDocs = documents.filter(doc => trackedStatuses.includes(doc.status))
-
-    if (processingDocs.length === 0) {
-      setDocumentStatuses(new Map())
-      return
-    }
+    const TEN_MINUTES = 10 * 60 * 1000
 
     const pollStatuses = async () => {
+      // Skip polling if page is not visible (tab switched away)
+      if (!isPageVisibleRef.current) {
+        return
+      }
+
+      const processingDocs = documentsRef.current.filter(doc => trackedStatuses.includes(doc.status))
+
+      if (processingDocs.length === 0) {
+        setDocumentStatuses(new Map())
+        pollingStartTimesRef.current.clear()
+        return
+      }
+
+      const now = Date.now()
+
       try {
         const statusPromises = processingDocs.map(async (doc) => {
+          // Track when we started polling this document
+          if (!pollingStartTimesRef.current.has(doc.id)) {
+            pollingStartTimesRef.current.set(doc.id, now)
+          }
+
+          // Check if document has been polling for too long (stuck)
+          const startTime = pollingStartTimesRef.current.get(doc.id)!
+          if (now - startTime > TEN_MINUTES) {
+            clientLogger.warn(`Document ${doc.id} has been polling for over 10 minutes, marking as stale`)
+            pollingStartTimesRef.current.delete(doc.id)
+            return {
+              docId: doc.id,
+              status: {
+                documentId: doc.id,
+                status: doc.status,
+                phase: 'Processing timeout',
+                progress: 0,
+                message: 'Document has been processing for over 10 minutes. Please try retrying.',
+                error: null,
+                lastUpdated: new Date().toISOString(),
+                isStale: true
+              },
+              isStale: true
+            }
+          }
           const response = await fetch(`/api/documents/${doc.id}/processing-status`, {
             cache: 'no-store'
           })
@@ -525,8 +599,19 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
           results.forEach(result => {
             if (!result) return
 
+            // Handle stale documents (polling timeout)
+            if ('isStale' in result && result.isStale) {
+              newStatuses.set(result.docId, { ...result.status, isStale: true })
+              return
+            }
+
             if (result.status.status === 'error') {
               newStatuses.delete(result.docId)
+              pollingStartTimesRef.current.delete(result.docId)
+            } else if (result.status.status === 'completed' || result.status.status === 'cancelled') {
+              // Clean up polling start time for terminal states
+              pollingStartTimesRef.current.delete(result.docId)
+              newStatuses.set(result.docId, result.status)
             } else {
               newStatuses.set(result.docId, result.status)
             }
@@ -549,8 +634,6 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
           }
         })
 
-        let shouldRefresh = false
-
         setDocuments(prev => prev.map(doc => {
           const latestStatus = statusById.get(doc.id)
           if (!latestStatus) {
@@ -566,10 +649,6 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
             return doc
           }
 
-          if (newStatus === 'completed') {
-            shouldRefresh = true
-          }
-
           const updatedDoc: Document = { ...doc, status: newStatus }
 
           if (newStatus === 'error') {
@@ -582,9 +661,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
           return updatedDoc
         }))
 
-        if (shouldRefresh) {
-          fetchDocuments(false)
-        }
+        // Note: Removed fetchDocuments(false) call - rely on realtime subscription for completion updates
       } catch (error) {
         clientLogger.error('Error polling document statuses:', error)
       }
@@ -593,9 +670,42 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
     const interval = setInterval(pollStatuses, 3000)
     pollStatuses()
 
-    return () => clearInterval(interval)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documents])
+    // Capture ref in cleanup closure to satisfy ESLint
+    const pollingStartTimes = pollingStartTimesRef.current
+    return () => {
+      clearInterval(interval)
+      pollingStartTimes.clear()
+    }
+  }, []) // Empty dependencies - effect runs once, uses refs for latest values
+
+  // Periodic full document refresh failsafe (every 25-35 seconds with jitter)
+  // This ensures UI eventually syncs with database even when realtime subscription fails
+  // Jitter prevents synchronized request spikes across multiple users
+  useEffect(() => {
+    const trackedStatuses: Document['status'][] = ['uploading', 'queued', 'processing', 'error']
+    // Add jitter: 25-35 seconds randomized per client to distribute load
+    const BASE_INTERVAL = 25000
+    const JITTER = 10000
+    const REFRESH_INTERVAL = BASE_INTERVAL + Math.random() * JITTER
+
+    const periodicRefresh = setInterval(() => {
+      // Only refresh if there are documents with tracked statuses that might need syncing
+      const hasTrackedDocs = documentsRef.current.some(doc =>
+        trackedStatuses.includes(doc.status)
+      )
+
+      if (hasTrackedDocs) {
+        clientLogger.info('Periodic document refresh to ensure UI sync', {
+          intervalMs: Math.round(REFRESH_INTERVAL)
+        })
+        fetchDocuments(false)
+      }
+    }, REFRESH_INTERVAL)
+
+    return () => {
+      clearInterval(periodicRefresh)
+    }
+  }, [fetchDocuments])
 
   // Automatically trigger the cron worker when queued documents are detected in development
   useEffect(() => {
@@ -777,8 +887,31 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
     }
   }, [refreshTrigger, fetchDocuments])
 
-  // Apply filtering, sorting, and search directly
+  // Apply filtering, sorting, and search directly with intelligent pagination reset
   useEffect(() => {
+    // Check if filters/sort changed (user action) vs documents updated (background)
+    const filtersChanged =
+      prevFiltersRef.current.searchQuery !== searchQuery ||
+      prevFiltersRef.current.statusFilter !== statusFilter ||
+      JSON.stringify(prevFiltersRef.current.lawFirmFilter) !== JSON.stringify(lawFirmFilter) ||
+      JSON.stringify(prevFiltersRef.current.fundManagerFilter) !== JSON.stringify(fundManagerFilter) ||
+      JSON.stringify(prevFiltersRef.current.fundAdminFilter) !== JSON.stringify(fundAdminFilter) ||
+      JSON.stringify(prevFiltersRef.current.jurisdictionFilter) !== JSON.stringify(jurisdictionFilter) ||
+      prevFiltersRef.current.sortBy !== sortBy ||
+      prevFiltersRef.current.sortOrder !== sortOrder
+
+    // Update ref for next comparison
+    prevFiltersRef.current = {
+      searchQuery,
+      statusFilter,
+      lawFirmFilter,
+      fundManagerFilter,
+      fundAdminFilter,
+      jurisdictionFilter,
+      sortBy,
+      sortOrder
+    }
+
     let filtered = documents.filter(doc => {
       const matchesSearch = searchQuery === '' ||
         doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -832,8 +965,22 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
     })
 
     setFilteredDocuments(filtered)
-    setCurrentPage(1)
-  }, [documents, searchQuery, statusFilter, lawFirmFilter, fundManagerFilter, fundAdminFilter, jurisdictionFilter, sortBy, sortOrder])
+
+    // Smart pagination reset logic:
+    // 1. Reset to page 1 if filters/sort changed (user action)
+    // 2. Adjust to last valid page if current page is out of bounds (document deleted/filtered out)
+    // 3. Otherwise preserve current page (background document updates)
+    const newTotalPages = Math.ceil(filtered.length / documentsPerPage)
+
+    if (filtersChanged) {
+      // User changed filters/sort - reset to page 1
+      setCurrentPage(1)
+    } else if (currentPage > newTotalPages && newTotalPages > 0) {
+      // Current page out of bounds - go to last valid page
+      setCurrentPage(newTotalPages)
+    }
+    // Otherwise: preserve currentPage (background updates don't reset pagination)
+  }, [documents, searchQuery, statusFilter, lawFirmFilter, fundManagerFilter, fundAdminFilter, jurisdictionFilter, sortBy, sortOrder, currentPage, documentsPerPage])
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredDocuments.length / documentsPerPage)

@@ -1,7 +1,6 @@
 /**
  * Google Cloud Credentials Helper
- * Supports local development (file path), Vercel deployment (raw JSON),
- * and legacy Vercel deployment (base64).
+ * Supports local development (file path) and production deployment (raw JSON or base64).
  */
 
 export function getGoogleClientOptions() {

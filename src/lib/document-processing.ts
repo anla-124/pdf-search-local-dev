@@ -399,6 +399,23 @@ export async function processDocument(documentId: string): Promise<ProcessDocume
         const base64Content = Buffer.from(arrayBuffer).toString('base64')
         logger.debug('Document converted to base64', { documentId, base64Length: base64Content.length })
 
+        // Detect actual page count from PDF to avoid wasteful retries
+        let actualPageCount: number | null = null
+        try {
+          const pdfDoc = await PDFDocument.load(arrayBuffer)
+          actualPageCount = pdfDoc.getPageCount()
+          logger.info('Detected actual PDF page count', {
+            documentId,
+            actualPages: actualPageCount,
+            estimatedPages: sizeAnalysis.estimatedPages
+          })
+        } catch (pdfError) {
+          logger.warn('Could not detect PDF page count, using estimation', {
+            documentId,
+            error: pdfError instanceof Error ? pdfError.message : 'Unknown error'
+          })
+        }
+
         // CHECKPOINT 2: Check cancellation before Document AI processing
         if (await checkCancellation(documentId)) {
           logger.info('Document cancelled before Document AI processing', { documentId })
@@ -447,13 +464,18 @@ export async function processDocument(documentId: string): Promise<ProcessDocume
         }
 
         const syncPageLimit = Number.parseInt(process.env['DOCUMENT_AI_SYNC_PAGE_LIMIT'] || '15', 10)
-        const shouldUseSyncFirst = sizeAnalysis.estimatedPages <= syncPageLimit
+        // Use actual page count if available, otherwise use estimation
+        const pageCount = actualPageCount ?? sizeAnalysis.estimatedPages
+        const shouldUseSyncFirst = pageCount <= syncPageLimit
 
         if (!shouldUseSyncFirst) {
           logger.info('Skipping sync-first Document AI processing due to page count', {
             documentId,
+            actualPages: actualPageCount,
             estimatedPages: sizeAnalysis.estimatedPages,
-            syncPageLimit
+            pageCountUsed: pageCount,
+            syncPageLimit,
+            reason: actualPageCount !== null ? 'actual-page-count' : 'estimated-page-count'
           })
 
           try {
