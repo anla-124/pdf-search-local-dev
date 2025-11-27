@@ -1,6 +1,13 @@
 /**
  * Debug utility for capturing and analyzing raw Document AI responses
- * Use this to understand the full structure of what Document AI returns
+ *
+ * ACTIVATION: Set DUMP_DOCUMENT_AI=1 in environment variables
+ * OUTPUT: Saves JSON files to ./document-ai-debug/<documentId>-<timestamp>.json
+ *
+ * Use this to:
+ * - Understand the full structure of what Document AI returns
+ * - Troubleshoot production Document AI processing issues
+ * - Analyze paragraph detection, page boundaries, and text extraction
  */
 
 import fs from 'fs/promises'

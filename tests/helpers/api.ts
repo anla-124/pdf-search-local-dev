@@ -69,24 +69,23 @@ export async function waitForCondition(
 export async function uploadTestDocument(
   request: APIRequestContext,
   authHeaders: Record<string, string>,
-  filePath: string,
+  pdfBuffer: Buffer,
+  filename: string = 'test-document.pdf',
   metadata?: Record<string, unknown>
 ) {
-  const formData = new FormData()
-
-  // Read file and create blob
-  const fs = await import('fs')
-  const fileBuffer = fs.readFileSync(filePath)
-  const blob = new Blob([fileBuffer], { type: 'application/pdf' })
-
-  formData.append('file', blob, 'test-document.pdf')
-  if (metadata) {
-    formData.append('metadata', JSON.stringify(metadata))
-  }
+  type MultipartPayload = NonNullable<Parameters<APIRequestContext['post']>[1]>['multipart']
+  const multipart: MultipartPayload = {
+    file: {
+      name: filename,
+      mimeType: 'application/pdf',
+      buffer: pdfBuffer
+    },
+    ...(metadata ? { metadata: JSON.stringify(metadata) } : {})
+  } as MultipartPayload
 
   const response = await request.post('/api/documents/upload', {
-    headers: authHeaders,
-    multipart: formData as never,
+    headers: { ...authHeaders },
+    multipart
   })
 
   return response
@@ -108,10 +107,45 @@ export async function deleteDocument(
 }
 
 /**
- * Create a sample PDF file for testing (in-memory)
+ * Wait for document processing to complete
  */
-export async function createTestPDF(text: string): Promise<Buffer> {
-  // This is a minimal PDF - in real tests, you might use pdf-lib
+export async function waitForDocumentProcessing(
+  request: APIRequestContext,
+  authHeaders: Record<string, string>,
+  documentId: string,
+  options: { timeout?: number; interval?: number } = {}
+): Promise<{ status: string; processingTimeMs?: number }> {
+  const timeout = options.timeout || 120000 // 2 minutes default
+  const interval = options.interval || 2000 // 2 seconds default
+  const startTime = Date.now()
+
+  while (Date.now() - startTime < timeout) {
+    const response = await request.get(`/api/documents/${documentId}/processing-status`, {
+      headers: authHeaders,
+    })
+
+    if (!response.ok()) {
+      throw new Error(`Failed to get processing status: ${response.status()}`)
+    }
+
+    const data = await response.json()
+
+    if (data.status === 'completed' || data.status === 'failed') {
+      return data
+    }
+
+    await new Promise(resolve => setTimeout(resolve, interval))
+  }
+
+  throw new Error(`Document processing timeout after ${timeout}ms`)
+}
+
+/**
+ * Create a sample PDF file for testing (in-memory)
+ * Creates a valid minimal PDF with text content
+ */
+export function createTestPDF(text: string = 'Test Document Content'): Buffer {
+  // Minimal valid PDF structure
   const pdfContent = `%PDF-1.4
 1 0 obj
 <<

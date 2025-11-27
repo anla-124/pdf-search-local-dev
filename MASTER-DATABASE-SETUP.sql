@@ -71,7 +71,6 @@ CREATE TABLE IF NOT EXISTS public.documents (
   content_type TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'uploading' CHECK (status IN ('uploading', 'queued', 'processing', 'completed', 'error', 'cancelled')),
   processing_error TEXT,
-  processing_notes TEXT,
   extracted_text TEXT,
   extracted_fields JSONB,
   metadata JSONB,
@@ -80,7 +79,7 @@ CREATE TABLE IF NOT EXISTS public.documents (
   centroid_embedding vector(768),  -- Pre-computed document-level centroid for Stage 0 filtering
   effective_chunk_count INTEGER,   -- De-overlapped chunk count for accurate size ratio calculation
   total_characters INTEGER,        -- Total character count for accurate character-based similarity metrics
-  embedding_model TEXT DEFAULT 'text-embedding-004',  -- Track which embedding model was used
+  embedding_model TEXT DEFAULT 'text-embedding-005',  -- Track which embedding model was used (768 dims, English/code optimized)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );

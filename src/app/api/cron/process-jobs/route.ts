@@ -504,11 +504,42 @@ export async function GET(request: NextRequest) {
       })
 
       // Verify this is called by authorized cron service
+      // Use constant-time comparison to prevent timing attacks
       const authHeader = request.headers.get('authorization')
-      if (authHeader !== `Bearer ${process.env['CRON_SECRET']}`) {
-        logger.warn('Unauthorized cron job access attempt', { 
+      const expectedSecret = process.env['CRON_SECRET']
+
+      if (!authHeader || !expectedSecret) {
+        logger.warn('Unauthorized cron job access attempt', {
           hasAuthHeader: !!authHeader,
-          component: 'cron-job' 
+          hasSecret: !!expectedSecret,
+          component: 'cron-job'
+        })
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+
+      // Extract token from "Bearer <token>" format
+      const providedToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader
+
+      // Use constant-time comparison to prevent timing attacks
+      const crypto = await import('crypto')
+      const expectedBuffer = Buffer.from(expectedSecret, 'utf8')
+      const providedBuffer = Buffer.from(providedToken, 'utf8')
+
+      // If lengths don't match, create dummy buffer to maintain constant time
+      const isLengthMatch = expectedBuffer.length === providedBuffer.length
+      const comparisonBuffer = isLengthMatch ? providedBuffer : Buffer.alloc(expectedBuffer.length)
+
+      let isValid = false
+      try {
+        isValid = isLengthMatch && crypto.timingSafeEqual(expectedBuffer, comparisonBuffer)
+      } catch {
+        isValid = false
+      }
+
+      if (!isValid) {
+        logger.warn('Unauthorized cron job access attempt', {
+          hasAuthHeader: !!authHeader,
+          component: 'cron-job'
         })
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }

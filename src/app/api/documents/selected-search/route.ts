@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { authenticateRequest } from '@/lib/api-auth'
 import { executeSimilaritySearch, validateDocumentForSimilarity } from '@/lib/similarity/orchestrator'
 import { logger } from '@/lib/logger'
 
@@ -45,13 +45,14 @@ interface SimilarityResult {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Authenticate request using centralized helper
+    // Supports: JWT tokens, service role (test-only), and cookie-based sessions
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
+
+    const { userId, supabase } = authResult
 
     // Parse request body
     const body = await request.json()
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     logger.info('Selected search requested', {
       sourceDocumentId,
       targetCount: targetDocumentIds.length,
-      userId: user.id
+      userId
     })
 
     // Verify source document exists and belongs to user
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       .from('documents')
       .select('id, title, status, centroid_embedding, effective_chunk_count, total_characters')
       .eq('id', sourceDocumentId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (sourceError || !sourceDocument) {
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
       .from('documents')
       .select('id, title, filename, file_size, file_path, content_type, status, page_count, created_at, updated_at, metadata, total_characters')
       .in('id', targetDocumentIds)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
 
     if (targetError) {
       return NextResponse.json({
@@ -170,7 +171,7 @@ export async function POST(request: NextRequest) {
           file_size: (targetDoc?.file_size as number) || 0,
           file_path: (targetDoc?.file_path as string) || '',
           content_type: (targetDoc?.content_type as string) || 'application/pdf',
-          user_id: user.id,
+          user_id: userId,
           status: (targetDoc?.status as string) || 'completed',
           page_count: result.document.page_count,
           created_at: (targetDoc?.created_at as string) || new Date().toISOString(),
@@ -212,7 +213,7 @@ export async function POST(request: NextRequest) {
           file_size: doc.file_size as number,
           file_path: doc.file_path as string,
           content_type: doc.content_type as string,
-          user_id: user.id,
+          user_id: userId,
           status: doc.status as string,
           page_count: doc.page_count as number | undefined,
           created_at: doc.created_at as string,

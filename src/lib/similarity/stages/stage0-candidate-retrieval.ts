@@ -288,60 +288,13 @@ export async function stage0HybridRetrieval(
   const startTime = Date.now()
   const { topK = 150 } = options
 
-  // TODO: Implement BM25 retrieval
-  // 1. Get dense results (centroid)
-  const denseResults = await stage0CandidateRetrieval(sourceDocId, { topK: topK * 2 })
-
-  // 2. Get sparse results (BM25) - requires BM25 index
-  // const sparseResults = await bm25Query(sourceDocId, { topK: topK * 2 })
-
-  // 3. Reciprocal Rank Fusion (RRF)
-  // const fusedResults = reciprocalRankFusion(denseResults, sparseResults, k=60)
-  void reciprocalRankFusion
-
-  // For now, just return dense results
-  logger.warn('Stage 0 hybrid retrieval fallback to dense results', {
-    sourceDocId,
-    reason: 'BM25 not implemented'
-  })
+  // TODO: Implement BM25 hybrid retrieval in the future
+  // For now, use dense vector search only
+  const denseResults = await stage0CandidateRetrieval(sourceDocId, { topK })
 
   return {
-    candidateIds: denseResults.candidateIds.slice(0, topK),
-    scores: denseResults.scores.slice(0, topK),
+    candidateIds: denseResults.candidateIds,
+    scores: denseResults.scores,
     timeMs: Date.now() - startTime
-  }
-}
-
-/**
- * Reciprocal Rank Fusion (RRF)
- * Combines multiple ranked lists using reciprocal rank scores
- * Formula: score = sum(1 / (k + rank)) for each list
- */
-function reciprocalRankFusion(
-  list1: { ids: string[]; scores: number[] },
-  list2: { ids: string[]; scores: number[] },
-  k: number = 60
-): { ids: string[]; scores: number[] } {
-  const rrfScores = new Map<string, number>()
-
-  // Add scores from list 1
-  list1.ids.forEach((id, rank) => {
-    const score = 1 / (k + rank + 1)
-    rrfScores.set(id, score)
-  })
-
-  // Add scores from list 2
-  list2.ids.forEach((id, rank) => {
-    const score = 1 / (k + rank + 1)
-    rrfScores.set(id, (rrfScores.get(id) || 0) + score)
-  })
-
-  // Sort by RRF score
-  const sorted = Array.from(rrfScores.entries())
-    .sort((a, b) => b[1] - a[1])
-
-  return {
-    ids: sorted.map(s => s[0]),
-    scores: sorted.map(s => s[1])
   }
 }

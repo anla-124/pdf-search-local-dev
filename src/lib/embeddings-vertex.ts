@@ -7,7 +7,9 @@ import { logger } from '@/lib/logger'
 export async function generateVertexEmbeddings(text: string): Promise<number[]> {
   try {
     const cleanedText = text.replace(/\n/g, ' ').trim()
-    const truncatedText = cleanedText.substring(0, 3072) // Vertex AI limit
+    // text-embedding-005 has 2048 token limit (tokens ≈ characters/4 for English)
+    // Use conservative 3072 character limit; API auto-truncates at token boundary
+    const truncatedText = cleanedText.substring(0, 3072)
 
     if (!truncatedText) {
       throw new Error('Text is empty after cleaning')
@@ -24,9 +26,9 @@ export async function generateVertexEmbeddings(text: string): Promise<number[]> 
 
     const client = await auth.getClient()
     const projectId = process.env['GOOGLE_CLOUD_PROJECT_ID']!
-    
-    // Use text-embedding-004 model for generating embeddings
-    const url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/text-embedding-004:predict`
+
+    // Use text-embedding-005 model (768 dimensions, specialized for English and code)
+    const url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/text-embedding-005:predict`
 
     const response = await client.request({
       url,
@@ -71,6 +73,3 @@ export async function generateVertexEmbeddings(text: string): Promise<number[]> 
 export async function generateEmbeddings(text: string): Promise<number[]> {
   return await generateVertexEmbeddings(text)
 }
-
-// Keep the old function name for compatibility
-export const generateEmbeddingsWithFallback = generateEmbeddings

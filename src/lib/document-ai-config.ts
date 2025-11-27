@@ -2,7 +2,6 @@
 import { logger } from '@/lib/logger'
 
 export const PROCESSOR_TYPES = {
-  FORM_PARSER: 'form_parser',
   DOCUMENT_OCR: 'ocr',
 } as const;
 
@@ -16,8 +15,6 @@ export function getProcessorId(type?: ProcessorType): string {
 
   // Use specific processor based on type
   switch (type) {
-    case PROCESSOR_TYPES.FORM_PARSER:
-      return process.env['GOOGLE_CLOUD_FORM_PARSER_ID'] || process.env['GOOGLE_CLOUD_PROCESSOR_ID']!;
     case PROCESSOR_TYPES.DOCUMENT_OCR:
       return process.env['GOOGLE_CLOUD_OCR_PROCESSOR_ID'] || process.env['GOOGLE_CLOUD_PROCESSOR_ID']!;
     default:

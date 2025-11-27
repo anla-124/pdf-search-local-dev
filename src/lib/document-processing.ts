@@ -11,7 +11,7 @@ import { SmartRetry, RetryConfigs, circuitBreakers } from '@/lib/retry-logic'
 import { logger, measurePerformance, withRequestContext } from '@/lib/logger'
 import { analyzeDocumentSize, estimateProcessingTime, requiresSpecialHandling, type DocumentSizeAnalysis } from '@/lib/document-size-strategies'
 import { DatabaseDocumentWithContent } from '@/types/external-apis'
-import { DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP, SENTENCES_PER_CHUNK, SENTENCE_OVERLAP, MIN_CHUNK_CHARACTERS, MAX_CHUNK_CHARACTERS } from '@/lib/constants/chunking'
+import { SENTENCES_PER_CHUNK, SENTENCE_OVERLAP, MIN_CHUNK_CHARACTERS, MAX_CHUNK_CHARACTERS } from '@/lib/constants/chunking'
 import { chunkByParagraphs, countCharacters, type Paragraph } from '@/lib/chunking/paragraph-chunker'
 import { chunkBySentences } from '@/lib/chunking/sentence-chunker'
 import type { GenericSupabaseSchema } from '@/types/supabase'
@@ -1394,73 +1394,6 @@ async function cleanupPartialEmbeddings(documentId: string) {
   }
 }
 
-// Legacy function for backward compatibility - FIXED: Connection pool memory leak
-export async function generateAndIndexEmbeddings(documentId: string, text: string): Promise<void> {
-  // FIXED: Reuse single connection throughout the function
-  const supabase = await createServiceClient()
-  
-  try {
-    // Get document metadata for Qdrant indexing
-    const { data: docRecord, error: docError } = await supabase
-      .from('documents')
-      .select('metadata, user_id')
-      .eq('id', documentId)
-      .single()
-
-    if (docError) {
-      logger.warn('Could not fetch document metadata (legacy)', { documentId, error: docError?.message, component: 'document-processing' })
-    }
-
-    const businessMetadata = docRecord?.metadata || {}
-    const userId = typeof docRecord?.user_id === 'string' ? docRecord.user_id : null
-
-    // Split text into chunks for embedding using current defaults
-    const chunks = splitTextIntoChunks(text, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP)
-    
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i]
-      if (!chunk) continue
-      
-      // Generate embedding with Vertex AI
-      const embedding = await generateEmbeddings(chunk)
-      
-      // Create unique vector ID
-      const vectorId = `${documentId}_chunk_${i}`
-      
-      // FIXED: Reuse existing connection instead of creating new one in loop
-      const { error: supabaseError } = await supabase.from('document_embeddings').insert({
-        document_id: documentId,
-        vector_id: vectorId,
-        embedding,
-        chunk_text: chunk,
-        chunk_index: i,
-        page_number: null, // Legacy documents don't have page tracking
-      })
-      
-      if (supabaseError) {
-        logger.error('Failed to store embedding in Supabase', supabaseError, { vectorId, component: 'document-processing' })
-        throw new Error(`Supabase storage failed: ${supabaseError.message}`)
-      }
-      
-      // Index in Qdrant with business metadata
-      await indexDocumentInQdrant(
-        vectorId,
-        embedding,
-        {
-          document_id: documentId,
-          chunk_index: i,
-          text: chunk,
-          ...(userId ? { user_id: userId } : {}),
-          // Include business metadata for filtering
-          ...businessMetadata
-        }
-      )
-    }
-  } finally {
-    // FIXED: Ensure connection is properly released back to pool
-    releaseServiceClient(supabase)
-  }
-}
 
 // Interface for text chunks with page information
 interface PagedChunk {
@@ -1590,7 +1523,6 @@ function buildProcessedDocumentData(document: DocumentAIDocument, pageOffset: nu
 // Uses sentence-based chunking across the full document, then assigns page numbers
 function splitTextIntoPagedChunks(
   pagesText: { text: string; pageNumber: number }[],
-  _chunkSize: number = DEFAULT_CHUNK_SIZE, // Ignored - kept for backward compatibility
   overlap: number = SENTENCE_OVERLAP
 ): PagedChunk[] {
   // Build a character-to-page mapping
@@ -2015,7 +1947,7 @@ export async function computeAndStoreCentroid(
         centroid_embedding: normalizedCentroid,
         effective_chunk_count: actualChunkCount,  // Use actual count, not theoretical
         total_characters: totalCharacters,
-        embedding_model: 'text-embedding-004'
+        embedding_model: 'text-embedding-005'
       })
       .eq('id', documentId)
 
@@ -2078,7 +2010,6 @@ async function generateEmbeddingsFromPages(
     })
     pagedChunks = splitTextIntoPagedChunks(
       pagesText,
-      DEFAULT_CHUNK_SIZE,
       0 // force zero overlap in fallback mode
     )
 
@@ -2237,26 +2168,6 @@ async function generateEmbeddingsFromPages(
   })
 
   return { chunkCount: pagedChunks.length }
-}
-
-/**
- * Split text into chunks using sentence-based chunking
- * Note: chunkSize and overlap parameters are kept for backward compatibility but are ignored
- * The new implementation uses sentence-based chunking with configurable sentence count and character limits
- */
-export function splitTextIntoChunks(
-  text: string,
-  _chunkSize: number, // Kept for backward compatibility, but ignored
-  _overlap: number = DEFAULT_CHUNK_OVERLAP // Kept for backward compatibility, but ignored
-): string[] {
-  // Use new sentence-based chunking
-  return chunkBySentences(
-    text,
-    SENTENCES_PER_CHUNK,
-    SENTENCE_OVERLAP,
-    MIN_CHUNK_CHARACTERS,
-    MAX_CHUNK_CHARACTERS
-  )
 }
 
 /**

@@ -1,9 +1,9 @@
-import { APIRequestContext } from '@playwright/test'
+import { createClient } from '@supabase/supabase-js'
 
 /**
  * Authentication Helper for Tests
  *
- * Provides utilities for authenticating test requests
+ * Provides utilities for authenticating test requests using real Supabase auth
  */
 
 export interface TestUser {
@@ -14,28 +14,42 @@ export interface TestUser {
 }
 
 /**
- * Create a test user session (for API testing)
- * Note: In real tests, you'll need actual test credentials or use Supabase test helpers
+ * Test user credentials
  */
-export async function createTestUserSession(request: APIRequestContext, user: TestUser) {
-  // For now, we'll use email/password auth
-  // In production, you might use a test user from your database
-  const response = await request.post('/api/auth/signin', {
-    data: {
-      email: user.email,
-      password: user.password,
-    },
-  })
+export const TEST_USER = {
+  email: process.env.TEST_USER_EMAIL || 'test@anduintransact.com',
+  password: process.env.TEST_USER_PASSWORD || 'test123456',
+}
 
-  if (!response.ok()) {
-    throw new Error(`Failed to create test user session: ${response.status()} ${await response.text()}`)
+/**
+ * Sign in with test user and get auth headers
+ * This creates a real Supabase session that respects RLS policies
+ */
+export async function getTestUserAuthHeaders(): Promise<Record<string, string>> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase environment variables not found')
   }
 
-  const data = await response.json()
-  user.accessToken = data.access_token
-  user.refreshToken = data.refresh_token
+  // Create Supabase client
+  const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-  return user
+  // Sign in with test user
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: TEST_USER.email,
+    password: TEST_USER.password,
+  })
+
+  if (error || !data.session) {
+    throw new Error(`Failed to sign in test user: ${error?.message || 'No session returned'}`)
+  }
+
+  return {
+    'Authorization': `Bearer ${data.session.access_token}`,
+    'Content-Type': 'application/json',
+  }
 }
 
 /**
@@ -57,22 +71,4 @@ export function getCronAuthHeader(): Record<string, string> {
     'Authorization': `Bearer ${cronSecret}`,
     'Content-Type': 'application/json',
   }
-}
-
-/**
- * Test user credentials (you should set these in .env.test.local)
- */
-export const TEST_USERS = {
-  admin: {
-    email: process.env.TEST_ADMIN_EMAIL || 'test-admin@example.com',
-    password: process.env.TEST_ADMIN_PASSWORD || 'test-password-123',
-  },
-  user1: {
-    email: process.env.TEST_USER1_EMAIL || 'test-user1@example.com',
-    password: process.env.TEST_USER1_PASSWORD || 'test-password-123',
-  },
-  user2: {
-    email: process.env.TEST_USER2_EMAIL || 'test-user2@example.com',
-    password: process.env.TEST_USER2_PASSWORD || 'test-password-123',
-  },
 }

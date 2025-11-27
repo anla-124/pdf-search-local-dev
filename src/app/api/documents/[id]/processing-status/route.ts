@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { authenticateRequest } from '@/lib/api-auth'
 import { logger } from '@/lib/logger'
 
 export async function GET(
@@ -8,13 +8,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate request (supports JWT, service role, and cookies)
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
+
+    const { userId, supabase, isServiceRole } = authResult
 
     // Get document to verify ownership
     const { data: document, error: docError } = await supabase
@@ -27,7 +28,8 @@ export async function GET(
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
 
-    if (document.user_id !== user.id) {
+    // Skip ownership check for service role
+    if (!isServiceRole && document.user_id !== userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 

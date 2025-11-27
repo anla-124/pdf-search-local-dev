@@ -1,22 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { authenticateRequest } from '@/lib/api-auth'
 import { processUploadedDocument, queueDocumentProcessingJob } from '@/lib/upload-optimization'
 import { throttling } from '@/lib/concurrency-limiter'
 import { validateFileFromFormData } from '@/lib/utils/validation-helpers'
-import { unauthorizedError, validationError, databaseError, handleApiError } from '@/lib/utils/api-response'
+import { validationError, databaseError, handleApiError } from '@/lib/utils/api-response'
 import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return unauthorizedError()
+    // Authenticate request using centralized helper
+    // Supports: JWT tokens, service role (test-only), and cookie-based sessions
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
 
-    return throttling.upload.run(user.id, async () => {
+    const { userId, supabase } = authResult
+
+    return throttling.upload.run(userId, async () => {
       const formData = await request.formData()
 
       // Validate file using shared validation utility
@@ -47,9 +48,9 @@ export async function POST(request: NextRequest) {
       // Generate unique filename
       const fileExt = file.name.split('.').pop()
       const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`
-      const filePath = `${user.id}/${fileName}`
+      const filePath = `${userId}/${fileName}`
 
-      logger.info('Uploading file', { filename: file.name, userEmail: user.email, fileSize: file.size })
+      logger.info('Uploading file', { filename: file.name, userId, fileSize: file.size })
 
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
       const { data: document, error: dbError } = await supabase
         .from('documents')
         .insert({
-          user_id: user.id,
+          user_id: userId,
           title: file.name.replace(/\.[^/.]+$/, ''), // Remove file extension
           filename: file.name,
           file_path: uploadData.path,
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
       // Queue processing job and start background execution
       const { jobId, sizeAnalysis } = await queueDocumentProcessingJob({
         documentId,
-        userId: user.id,
+        userId,
         filename: documentFilename,
         fileSize: documentFileSize,
         filePath: documentFilePath,
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
       if (!jobId) {
         processUploadedDocument({
           documentId,
-          userId: user.id,
+          userId,
           filename: documentFilename,
           fileSize: documentFileSize,
           filePath: documentFilePath,
@@ -134,8 +135,9 @@ export async function POST(request: NextRequest) {
         queueMicrotask(() => triggerCronProcessing(request))
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         id: documentId,
+        title: document.title,
         jobId,
         message: isQueued
           ? 'Document uploaded successfully and queued for processing'

@@ -23,9 +23,6 @@ export const ALLOWED_FILE_EXTENSIONS = ['.pdf'] as const
 // DOCUMENT PROCESSING
 // =============================================================================
 
-/** Default chunk size for document processing */
-export const DEFAULT_CHUNK_SIZE = 50
-
 /** Maximum chunk tokens for embedding */
 export const MAX_CHUNK_TOKENS = 250
 

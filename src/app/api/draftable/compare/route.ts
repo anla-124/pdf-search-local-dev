@@ -4,20 +4,20 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { authenticateRequest } from '@/lib/api-auth'
 import { draftableClient } from '@/lib/draftable'
 import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      logger.warn('Unauthorized Draftable comparison attempt', { error: authError?.message })
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Authenticate request using centralized helper
+    // Supports: JWT tokens, service role (test-only), and cookie-based sessions
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
+
+    const { userId, supabase } = authResult
 
     // Parse request body
     const body = await request.json()
@@ -30,23 +30,23 @@ export async function POST(request: NextRequest) {
     }
 
     logger.info('Creating Draftable comparison', {
-      userId: user.id,
+      userId,
       sourceDocId,
       targetDocId
     })
 
     // Fetch source document metadata
-    const { data: sourceDoc, error: sourceError } = await supabase
+    const { data: sourceDoc, error: sourceError} = await supabase
       .from('documents')
       .select('file_path, title, content_type')
       .eq('id', sourceDocId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (sourceError || !sourceDoc) {
       logger.error('Source document not found', sourceError as Error, {
         sourceDocId,
-        userId: user.id
+        userId
       })
       return NextResponse.json({ error: 'Source document not found' }, { status: 404 })
     }
@@ -56,13 +56,13 @@ export async function POST(request: NextRequest) {
       .from('documents')
       .select('file_path, title, content_type')
       .eq('id', targetDocId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (targetError || !targetDoc) {
       logger.error('Target document not found', targetError as Error, {
         targetDocId,
-        userId: user.id
+        userId
       })
       return NextResponse.json({ error: 'Target document not found' }, { status: 404 })
     }
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
       identifier: comparison.identifier,
       sourceDocId,
       targetDocId,
-      userId: user.id
+      userId
     })
 
     // Generate signed viewer URL (valid for 1 hour)

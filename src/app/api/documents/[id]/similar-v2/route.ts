@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { authenticateRequest } from '@/lib/api-auth'
 import { executeSimilaritySearch, validateDocumentForSimilarity } from '@/lib/similarity/orchestrator'
 import { logger } from '@/lib/logger'
 
@@ -206,13 +206,13 @@ export async function POST(
     const { id } = await params
     logger.info('Similarity search v2 requested', { documentId: id })
 
-    const supabase = await createClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Authenticate request (supports JWT, service role, and cookies)
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
+
+    const { userId, supabase } = authResult
 
     // Parse request body for optional configuration
     const body = await request.json().catch(() => ({}))
@@ -245,7 +245,7 @@ export async function POST(
       ...metadataFilters
     } = rawFilters as RawFilters
 
-    const { vectorFilters, appliedFilters } = buildStage0Filters(metadataFilters, user.id)
+    const { vectorFilters, appliedFilters } = buildStage0Filters(metadataFilters, userId)
 
     const normalizedStage2Workers =
       stage2_parallelWorkers !== undefined
@@ -257,7 +257,7 @@ export async function POST(
       .from('documents')
       .select('id, title, status, centroid_embedding, effective_chunk_count, page_count, total_characters')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (docError || !document) {
@@ -447,20 +447,20 @@ export async function GET(
   try {
     const { id } = await params
 
-    const supabase = await createClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Authenticate request using centralized helper
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
+
+    const { userId, supabase } = authResult
 
     // Verify document belongs to user
     const { data: document, error: docError } = await supabase
       .from('documents')
       .select('id, title, status, total_characters')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (docError || !document) {

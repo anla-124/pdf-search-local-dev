@@ -1,282 +1,210 @@
-# 🧪 PDF Searcher - Automated Test Suite
+# Test Suite Documentation
 
-This directory contains automated tests for the PDF Searcher application.
+## Overview
 
-## 📋 Quick Start (For Non-Technical Users)
+This test suite provides high-confidence validation of the PDF Searcher application through real end-to-end workflows with actual document processing, OCR, embeddings, and similarity search.
 
-### Step 1: Make Sure Your App is NOT Running
+## Test Categories
 
-Before running tests, **stop your development server** if it's running:
-- Press `Ctrl+C` in the terminal where `npm run dev` is running
+### ⚡ Unit Tests (`tests/unit/`) - NEW!
+**Purpose:** Fast, isolated business logic validation with mocked services
+**Runtime:** ~15 seconds
+**When to run:** On every commit, during local development, in CI/CD
 
-### Step 2: Run Tests
+**What they test:**
+- Document processing logic with mocked Document AI
+- Embedding generation with mocked Vertex AI
+- Vector storage and search with mocked Qdrant
+- Business logic without external dependencies
 
-Open terminal in the project folder and run:
+**Benefits:**
+- ✅ Fast (<20s total)
+- ✅ Free (no API costs)
+- ✅ Deterministic (no flakiness from external services)
+- ✅ Suitable for CI/CD on every commit
+
+**Command:**
+```bash
+npm run test:unit
+```
+
+### 🔥 Smoke Tests (`tests/smoke/`)
+**Purpose:** Fast, critical path validation
+**Runtime:** ~30-60 seconds
+**When to run:** Before every deployment, after major changes
+
+**What they test:**
+- Application server health
+- Database connectivity
+- Authentication endpoints
+- Core user workflow (upload → process → search → download → delete)
+
+**Command:**
+```bash
+npm run test:smoke
+```
+
+### 🔬 Integration Tests (`tests/integration/`)
+**Purpose:** Comprehensive end-to-end validation with real services
+**Runtime:** ~3-5 minutes (includes real document processing)
+**When to run:** Pre-deployment validation, staging environment
+
+**What they test:**
+- Complete document lifecycle workflows
+- Multiple document handling
+- Error recovery and retry logic
+- Search relevance with real embeddings
+
+**Command:**
+```bash
+npm run test:integration
+```
+
+## Test Infrastructure
+
+### Authentication
+
+Tests use **real Supabase authentication** with a dedicated test user account.
+
+#### Test User Credentials
+
+**Owner:** Development Team
+**Credentials stored in:** `.env.local` (never commit to git)
 
 ```bash
-# Run ALL tests (takes 2-3 minutes)
-npm test
-
-# Run ONLY smoke tests (takes 30 seconds) ⭐ START HERE
-npm test:smoke
-
-# Run ONLY API tests (takes 1 minute)
-npm test:api
+TEST_USER_EMAIL=test@anduintransact.com
+TEST_USER_PASSWORD=test123456
 ```
 
-### Step 3: Read the Results
+**⚠️ IMPORTANT:**
+- These credentials must be maintained by the team
+- If credentials expire or change, all tests will fail
+- Rotate credentials periodically per security policy
+- Never expose these in client-side code or public repos
 
-After tests finish, you'll see:
+#### Service Role Key
 
-```
-✓ Application server is running (1.2s)
-✓ Database connection works (0.5s)
-✓ CRON authentication works (0.3s)
-✗ Upload document - 500 error (FAILED)
-
-Passed: 25/30 tests
-Failed: 5/30 tests
-```
-
-- ✅ **Green checkmarks** = Tests passed (good!)
-- ❌ **Red X** = Tests failed (something broken)
-
-### Step 4: View Detailed Report
-
-After tests run, open the HTML report:
-
-```bash
-npm run test:report
-```
-
-This opens a visual report in your browser showing:
-- Which tests passed/failed
-- Error messages for failed tests
-- Screenshots of failures
-- Detailed logs
-
----
-
-## 🎯 What Gets Tested?
-
-### Smoke Tests (`npm test:smoke`)
-**Runtime: ~30 seconds**
-
-The fastest tests that verify critical functionality:
-- ✅ Server is running
-- ✅ Database connection works
-- ✅ API endpoints respond
-- ✅ Authentication works
-- ✅ Environment variables loaded
-
-**Run this before every deployment!**
-
-### API Tests (`npm test:api`)
-**Runtime: ~2 minutes**
-
-Tests all API endpoints:
-- ✅ Health & monitoring endpoints
-- ✅ CRON job endpoints
-- ✅ Debug endpoints with authentication
-- ✅ Error handling (401, 403, 404, 500)
-- ✅ Response format validation
-
-### Integration Tests (`npm test:integration`)
-**Runtime: ~5 minutes**
-
-Tests complete workflows:
-- ✅ Upload → Process → Search flow
-- ✅ Document lifecycle (create → update → delete)
-- ✅ Multi-user scenarios
-- ✅ Background job processing
-
-### All Tests (`npm test`)
-**Runtime: ~5-10 minutes**
-
-Runs everything: smoke + API + integration tests
-
----
-
-## 🔧 Troubleshooting
-
-### ❌ "Error: Missing environment variables"
-
-**Problem:** Tests can't find .env.local file
-
-**Solution:**
-1. Make sure `.env.local` file exists in project root
-2. Make sure it contains all required variables:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `CRON_SECRET`
-
-### ❌ "Error: Server not reachable"
-
-**Problem:** Development server won't start
-
-**Solution:**
-1. Check if port 3000 is already in use
-2. Try running `npm run dev` manually first
-3. If it works, then run tests
-
-### ❌ Tests fail with "401 Unauthorized"
-
-**Problem:** Authentication not working
-
-**Solution:**
-1. Verify `CRON_SECRET` is set in `.env.local`
-2. Verify Supabase keys are correct
-3. Check if Supabase project is active
-
-### ❌ Tests fail with "Database connection error"
-
-**Problem:** Can't connect to database
-
-**Solution:**
-1. Verify `SUPABASE_SERVICE_ROLE_KEY` is correct
-2. Check if Supabase project is paused (free tier)
-3. Verify internet connection
-
----
-
-## 📊 Test Reports
-
-### HTML Report (Visual)
-```bash
-npm run test:report
-```
-
-Opens an interactive HTML report in your browser with:
-- Pass/fail status for each test
-- Error messages and stack traces
-- Screenshots of failures
-- Test execution timeline
-
-### JSON Report (For CI/CD)
-After running tests, find detailed results in:
-```
-test-results/results.json
-```
-
-### Console Output
-Real-time test results printed to terminal as tests run.
-
----
-
-## 🚀 Running Tests in CI/CD
-
-If you're using GitHub Actions or similar:
-
-```yaml
-# .github/workflows/test.yml
-- name: Run tests
-  run: npm test
-  env:
-    NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-    SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-    CRON_SECRET: ${{ secrets.CRON_SECRET }}
-```
-
----
-
-## 📁 Test Structure
-
-```
-tests/
-├── api/                    # API endpoint tests
-│   ├── health.api.spec.ts  # Health & monitoring tests
-│   └── ...
-├── smoke/                  # Critical path smoke tests
-│   └── critical-path.smoke.spec.ts
-├── integration/            # End-to-end workflow tests
-│   └── ...
-├── helpers/                # Reusable test utilities
-│   ├── auth.ts            # Authentication helpers
-│   └── api.ts             # API testing helpers
-├── fixtures/               # Test data (PDFs, users, etc.)
-│   └── ...
-└── README.md              # This file
-```
-
----
-
-## ⚙️ Advanced Configuration
-
-### Run Specific Test File
-```bash
-npx playwright test tests/api/health.api.spec.ts
-```
-
-### Run Tests in Debug Mode
-```bash
-npx playwright test --debug
-```
-
-### Run Tests with UI (Visual Mode)
-```bash
-npx playwright test --ui
-```
-
-### Generate New Tests
-```bash
-npx playwright codegen http://localhost:3000
-```
-
----
-
-## 📝 Writing New Tests
-
-If you want to add more tests, follow this template:
+The application requires the **service role key** for operational infrastructure:
 
 ```typescript
-import { test, expect } from '@playwright/test'
-
-test.describe('My Feature', () => {
-  test('should do something', async ({ request }) => {
-    const response = await request.get('/api/my-endpoint')
-    expect(response.ok()).toBeTruthy()
-  })
-})
+// Used by connection pool for background operations
+const client = createServerClient(
+  supabaseUrl,
+  serviceRoleKey  // Creates service-level database connections
+)
 ```
 
-Save as `tests/api/my-feature.api.spec.ts` and run `npm test:api`
+**⚠️ SECURITY:**
+- Service role key bypasses Row Level Security (RLS)
+- **ONLY** for server-side connection pool and background operations
+- **NOT** used for API endpoint authentication (tests use real user JWT tokens)
+- **NEVER** expose `SUPABASE_SERVICE_ROLE_KEY` client-side
+- Keep strictly server-side in environment variables
 
----
+### Test Strategy
 
-## 💡 Best Practices
+#### Unit Tests with Mocks (CI/CD) ⚡
+✅ **What:** Mocked Document AI, Vertex AI, and Qdrant services
+✅ **Pros:** Fast (~15s), free (no API costs), deterministic, reliable
+✅ **Use for:**
+- Every commit in CI/CD
+- Local development
+- Testing business logic
+- Edge cases and error conditions
 
-1. **Always run smoke tests before deploying** (`npm test:smoke`)
-2. **Run full tests after making changes** (`npm test`)
-3. **Check the HTML report for failures** (`npm run test:report`)
-4. **Don't commit if tests fail** (fix the code first)
-5. **Add new tests when you add features** (prevents regressions)
+**Mock Infrastructure:**
+- `tests/mocks/document-ai.mock.ts` - OCR extraction simulation
+- `tests/mocks/vertex-ai.mock.ts` - Embedding generation
+- `tests/mocks/qdrant.mock.ts` - In-memory vector database
 
----
+#### Live Service Tests (Pre-Deployment)
+✅ **What:** Tests hit real Supabase, Document AI, Vertex AI, Qdrant
+✅ **Pros:** High confidence - validates actual integration
+❌ **Cons:** Slow (~3 min), expensive (API costs), potential flakiness
 
-## 🆘 Need Help?
+**Use for:**
+- Pre-deployment validation
+- Staging environment verification
+- Production readiness checks
 
-If tests fail and you're not sure why:
+## Environment Setup
 
-1. **Check the HTML report** - Shows detailed error messages
-2. **Look at test-results/screenshots/** - Visual evidence of failures
-3. **Check the console output** - Shows which test failed and why
-4. **Verify .env.local** - Make sure all variables are set
-5. **Try running tests one at a time** - Isolate the problem
+Required environment variables in `.env.local`:
 
----
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-## ✅ Test Coverage Summary
+# Test User
+TEST_USER_EMAIL=test@anduintransact.com
+TEST_USER_PASSWORD=test123456
 
-| Test Type | Count | Coverage |
-|-----------|-------|----------|
-| Smoke Tests | 7 | Critical path |
-| Health API Tests | 15+ | Monitoring endpoints |
-| Document API Tests | 30+ | CRUD operations |
-| Search API Tests | 20+ | Search & comparison |
-| **TOTAL** | **70+** | **~85% coverage** |
+# CRON
+CRON_SECRET=your-cron-secret
+```
 
----
+## Security Considerations
 
-**🎉 You're all set! Run `npm test:smoke` to verify everything works.**
+### Secrets Management
+- ✅ All secrets in `.env.local` (gitignored)
+- ✅ Service role key never exposed client-side
+- ✅ Test user has limited permissions
+- ❌ **Never** commit credentials to git
+- ❌ **Never** use production credentials for tests
+
+## CI/CD Recommendations
+
+### GitHub Actions / CI Pipeline
+
+**On Every Commit:**
+```bash
+npm run test:ci  # Runs unit + smoke tests (~45s total)
+```
+
+**Benefits:**
+- Fast feedback (<1 minute)
+- No API costs
+- Reliable (no external service dependencies for unit tests)
+- Catches regressions early
+
+**Pre-Deployment / Staging:**
+```bash
+npm run test:integration  # Runs full integration tests (~3-5 min)
+```
+
+**Benefits:**
+- Validates real API integrations
+- Tests actual document processing pipeline
+- High confidence before production deployment
+
+### Test Execution Strategy
+
+```
+┌─────────────────────────────────────────────────┐
+│ LOCAL DEVELOPMENT                                │
+│ • npm run test:unit (during development)        │
+│ • npm run test:smoke (before committing)        │
+└─────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────┐
+│ CI - ON EVERY COMMIT                             │
+│ • npm run test:ci (unit + smoke)                │
+│ • Fast feedback (~45s)                           │
+│ • No external API costs                          │
+└─────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────┐
+│ PRE-DEPLOYMENT / STAGING                         │
+│ • npm run test:integration                       │
+│ • Full end-to-end validation (~3-5 min)         │
+│ • Real external services                         │
+└─────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────┐
+│ PRODUCTION DEPLOYMENT                            │
+└─────────────────────────────────────────────────┘
+```
+
+For complete documentation, see the full README sections on test helpers, debugging, and maintenance.

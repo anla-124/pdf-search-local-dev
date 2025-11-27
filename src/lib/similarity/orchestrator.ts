@@ -597,8 +597,9 @@ export async function validateDocumentForSimilarity(
     }
 
     // Warnings (non-blocking)
-    if (doc.embedding_model !== 'text-embedding-004') {
-      warnings.push(`Unexpected embedding model: ${doc.embedding_model}`)
+    const expectedModels = ['text-embedding-005']
+    if (doc.embedding_model && !expectedModels.includes(doc.embedding_model as string)) {
+      warnings.push(`Unexpected embedding model: ${doc.embedding_model} (expected ${expectedModels.join(' or ')})`)
     }
 
     return {

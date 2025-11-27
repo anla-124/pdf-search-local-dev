@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { authenticateRequest } from '@/lib/api-auth'
 import { logger } from '@/lib/logger'
 
 export async function GET(
@@ -8,20 +8,21 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate request (supports JWT, service role, and cookies)
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
+
+    const { userId, supabase } = authResult
 
     // Get document to check ownership and get file path
     const { data: document, error: fetchError } = await supabase
       .from('documents')
       .select('file_path, filename, content_type')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single<{ file_path: string | null; filename: string | null; content_type: string | null }>()
 
     if (fetchError) {

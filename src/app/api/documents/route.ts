@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { authenticateRequest } from '@/lib/api-auth'
 import { PaginationUtils, DatabasePagination } from '@/lib/utils/pagination'
 import { DatabaseDocumentWithContent } from '@/types/external-apis'
 import { logger } from '@/lib/logger'
@@ -7,13 +7,14 @@ import type { PostgrestResponse } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Authenticate request using centralized helper
+    // Supports: JWT tokens, service role (test-only), and cookie-based sessions
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
+
+    const { userId, supabase } = authResult
 
     // Parse pagination and filter parameters
     const paginationParams = PaginationUtils.parseParams(request)
@@ -31,13 +32,13 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
-    logger.info('Documents API: fetching documents for user', { userId: user.id, statusParam: status, searchParam: search, includeJobsParam: includeJobs })
+    logger.info('Documents API: fetching documents for user', { userId, statusParam: status, searchParam: search, includeJobsParam: includeJobs })
 
     // Get total count for pagination (with same filters)
     let countQuery = supabase
       .from('documents')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
     
     if (status) {
       countQuery = countQuery.eq('status', status)
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('documents')
       .select(selectClause)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
 
     // Apply filters
     if (status) {
@@ -130,7 +131,7 @@ export async function GET(request: NextRequest) {
       return doc
     }) || []
 
-    logger.info('Documents API: returned documents', { userId: user.id, count: flattenedDocuments.length, documentIds: flattenedDocuments.map(doc => doc.id) })
+    logger.info('Documents API: returned documents', { userId, count: flattenedDocuments.length, documentIds: flattenedDocuments.map(doc => doc.id) })
 
     // Create paginated response
     const responseData = PaginationUtils.createPaginatedResponse(

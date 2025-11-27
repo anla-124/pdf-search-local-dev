@@ -66,6 +66,16 @@ export default defineConfig({
 
   // Test projects for different test types
   projects: [
+    // Unit Tests (mocked services, no server needed, very fast)
+    {
+      name: 'unit',
+      testMatch: /.*\.unit\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        headless: true,
+      },
+    },
+
     // API Tests (no browser needed, runs fast)
     {
       name: 'api',
@@ -101,6 +111,16 @@ export default defineConfig({
     {
       name: 'smoke',
       testMatch: /.*\.smoke\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        headless: true,
+      },
+    },
+
+    // Load Tests (concurrent user simulation, runs with --workers=1)
+    {
+      name: 'load',
+      testMatch: /.*\.load\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         headless: true,

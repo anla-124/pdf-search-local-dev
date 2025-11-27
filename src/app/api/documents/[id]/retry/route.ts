@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createServiceClient, releaseServiceClient } from '@/lib/supabase/server'
+import { authenticateRequest } from '@/lib/api-auth'
+import { createServiceClient, releaseServiceClient } from '@/lib/supabase/server'
 import { queueDocumentProcessingJob, processUploadedDocument } from '@/lib/upload-optimization'
 import { logger } from '@/lib/logger'
 
@@ -40,17 +41,19 @@ export async function POST(
   try {
     const { id } = await params
 
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Authenticate request (supports JWT, service role, and cookies)
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
+
+    const { userId, supabase } = authResult
 
     const { data: document, error: documentError } = await supabase
       .from('documents')
       .select('id, user_id, title, filename, file_path, file_size, content_type, status, processing_error, metadata, page_count, created_at, updated_at')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
 
     if (documentError) {
@@ -154,7 +157,7 @@ export async function POST(
 
     const { jobId, sizeAnalysis } = await queueDocumentProcessingJob({
       documentId: id,
-      userId: user.id,
+      userId: userId,
       filename,
       fileSize,
       filePath,
@@ -167,7 +170,7 @@ export async function POST(
     } else {
       processUploadedDocument({
         documentId: id,
-        userId: user.id,
+        userId: userId,
         filename,
         fileSize,
         filePath,

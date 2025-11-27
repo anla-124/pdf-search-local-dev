@@ -39,8 +39,8 @@ async function initQdrantCollection() {
 
     await client.createCollection(collectionName, {
       vectors: {
-        size: 768,  // Vertex AI text-embedding-004 dimension
-        distance: 'Cosine'  // Cosine similarity
+        size: 768,  // Vertex AI text-embedding-005 dimension
+        distance: 'Cosine'  // Cosine similarity (auto-normalizes vectors)
       },
       optimizers_config: {
         default_segment_number: 2

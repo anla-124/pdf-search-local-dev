@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { authenticateRequest } from '@/lib/api-auth'
 import { updateDocumentMetadataInQdrant, getVectorIdsForDocument } from '@/lib/qdrant'
 import { activityLogger } from '@/lib/activity-logger'
 import { DatabaseDocumentWithContent } from '@/types/external-apis'
@@ -13,13 +13,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate request (supports JWT, service role, and cookies)
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
+
+    const { userId, supabase } = authResult
 
     const { data: document, error: dbError } = await supabase
       .from('documents')
@@ -27,7 +28,7 @@ export async function GET(
         'id, user_id, title, filename, file_path, file_size, content_type, status, processing_error, extracted_fields, metadata, page_count, created_at, updated_at, document_content(extracted_text)'
       )
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle<DatabaseDocumentWithContent>()
 
     if (dbError) {
@@ -61,21 +62,22 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate request (supports JWT, service role, and cookies)
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
 
-    return throttling.delete.run(user.id, async () => {
+    const { userId, supabase } = authResult
+
+    return throttling.delete.run(userId, async () => {
       // Get document to check ownership and get file path FIRST
       const { data: document, error: fetchError } = await supabase
         .from('documents')
         .select('file_path, filename')
         .eq('id', id)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single<{ file_path: string | null; filename: string | null }>()
 
       if (fetchError) {
@@ -121,7 +123,7 @@ export async function DELETE(
         .from('documents')
         .delete()
         .eq('id', id)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
 
       if (deleteError) {
         logger.error('Documents API: database deletion error', deleteError)
@@ -130,8 +132,8 @@ export async function DELETE(
 
       // Log activity
       await activityLogger.logActivity({
-        userId: user.id,
-        userEmail: user.email || '',
+        userId: userId,
+        userEmail: '',
         action: 'delete',
         resourceType: 'document',
         resourceId: id,
@@ -157,13 +159,14 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    
-    // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Authenticate request (supports JWT, service role, and cookies)
+    const authResult = await authenticateRequest(request)
+    if (authResult instanceof NextResponse) {
+      return authResult // Return error response
     }
+
+    const { userId, supabase } = authResult
 
     const body = await request.json() as {
       metadata?: Record<string, unknown>
@@ -180,7 +183,7 @@ export async function PATCH(
       .from('documents')
       .select('id, user_id, title, filename, file_path, file_size, content_type, status, processing_error, extracted_fields, metadata, page_count, created_at, updated_at, document_content(extracted_text)')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle<DatabaseDocumentWithContent>()
 
     if (fetchError) {
@@ -208,8 +211,29 @@ export async function PATCH(
     }
 
     if (title) {
-      // 1. Construct new filename and file path
-      const newFilename = `${title}.pdf`
+      // 1. Sanitize title to prevent path traversal attacks
+      // Remove any characters that could be used for directory traversal
+      const sanitizedTitle = title
+        .replace(/[\/\\]/g, '-')  // Replace slashes with hyphens
+        .replace(/\.\./g, '')      // Remove parent directory references
+        .replace(/[<>:"|?*\x00-\x1F]/g, '')  // Remove invalid filename characters
+        .trim()
+
+      // Validate sanitized title
+      if (!sanitizedTitle || sanitizedTitle.length === 0) {
+        return NextResponse.json({
+          error: 'Invalid title: Title cannot be empty after sanitization'
+        }, { status: 400 })
+      }
+
+      if (sanitizedTitle.length > 255) {
+        return NextResponse.json({
+          error: 'Invalid title: Title too long (max 255 characters)'
+        }, { status: 400 })
+      }
+
+      // 2. Construct new filename and file path
+      const newFilename = `${sanitizedTitle}.pdf`
       const oldFilepath = existingDocument.file_path
 
       if (!oldFilepath || typeof oldFilepath !== 'string') {
@@ -217,9 +241,42 @@ export async function PATCH(
         return NextResponse.json({ error: 'Document file path is missing' }, { status: 500 })
       }
 
-      const newFilepath = oldFilepath.substring(0, oldFilepath.lastIndexOf('/') + 1) + newFilename
+      // Extract directory path and validate it belongs to the user
+      const lastSlashIndex = oldFilepath.lastIndexOf('/')
+      if (lastSlashIndex === -1) {
+        logger.error('Documents API: invalid file path format', undefined, { documentId: id, filePath: oldFilepath })
+        return NextResponse.json({ error: 'Invalid file path format' }, { status: 500 })
+      }
 
-      // 2. Move the file in Supabase Storage
+      const directoryPath = oldFilepath.substring(0, lastSlashIndex + 1)
+
+      // Verify directory path starts with user ID (security check)
+      if (!directoryPath.startsWith(`${userId}/`)) {
+        logger.error('Documents API: path traversal attempt detected', undefined, {
+          documentId: id,
+          userId,
+          directoryPath
+        })
+        return NextResponse.json({
+          error: 'Invalid operation: File path does not belong to user'
+        }, { status: 403 })
+      }
+
+      const newFilepath = directoryPath + newFilename
+
+      // Final validation: ensure new path still belongs to user
+      if (!newFilepath.startsWith(`${userId}/`)) {
+        logger.error('Documents API: path traversal attempt in final path', undefined, {
+          documentId: id,
+          userId,
+          newFilepath
+        })
+        return NextResponse.json({
+          error: 'Invalid operation: Security validation failed'
+        }, { status: 403 })
+      }
+
+      // 3. Move the file in Supabase Storage
       const { error: moveError } = await supabase.storage
         .from('documents')
         .move(oldFilepath, newFilepath)
@@ -229,8 +286,8 @@ export async function PATCH(
         return NextResponse.json({ error: 'Failed to rename document in storage.' }, { status: 500 })
       }
 
-      // 3. Prepare database update object
-      updateData.title = title
+      // 4. Prepare database update object (use sanitized title)
+      updateData.title = sanitizedTitle
       updateData.filename = newFilename
       updateData.file_path = newFilepath
     }
@@ -244,7 +301,7 @@ export async function PATCH(
       .from('documents')
       .update(updateData)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .select('id, user_id, title, filename, file_path, file_size, content_type, status, processing_error, extracted_fields, metadata, page_count, created_at, updated_at, document_content(extracted_text)')
       .maybeSingle<DatabaseDocumentWithContent>()
 
@@ -297,8 +354,8 @@ export async function PATCH(
 
     // Log the successful update activity
     await activityLogger.logActivity({
-      userId: user.id,
-      userEmail: user.email || '',
+      userId: userId,
+      userEmail: '',
       action: 'upload',
       resourceType: 'document',
       resourceId: id,
