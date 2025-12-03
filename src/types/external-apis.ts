@@ -945,7 +945,6 @@ export interface DatabaseDocument {
 
 export interface DatabaseDocumentWithContent extends DatabaseDocument {
   document_content?: { extracted_text: string }[];
-  extracted_text?: string;
 }
 
 export interface DatabaseDocumentJob {

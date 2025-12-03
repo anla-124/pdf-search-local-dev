@@ -14,8 +14,11 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescript
 import { SearchableMultiSelect } from '@/components/ui/searchable-multi-select'
 import { SearchModeModal } from '@/components/similarity/search-mode-modal'
 import { EditDocumentMetadataModal } from './edit-document-metadata-modal'
+import { KeywordResults } from '@/components/search/keyword-results'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import type { KeywordSearchResponse } from '@/types/search'
 import {
   FileText,
   Target,
@@ -95,6 +98,9 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
   const [documents, setDocuments] = useState<Document[]>([])
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchMode, setSearchMode] = useState<'name' | 'content'>('name')
+  const [keywordResults, setKeywordResults] = useState<KeywordSearchResponse | null>(null)
+  const [isKeywordSearching, setIsKeywordSearching] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('created_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -218,6 +224,87 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
     ))
     setEditingDocument(null)
   }
+
+  /**
+   * Perform keyword search on document content
+   */
+  const performKeywordSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setKeywordResults(null)
+      return
+    }
+
+    try {
+      setIsKeywordSearching(true)
+      setError('')
+
+      const response = await fetch('/api/documents/keyword-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: query.trim(),
+          maxPagesPerDoc: 3,
+          maxDocuments: 20
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Search failed: ${response.status}`)
+      }
+
+      const data: KeywordSearchResponse = await response.json()
+      setKeywordResults(data)
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to search documents'
+      setError(errorMessage)
+      clientLogger.error('Keyword search error:', err)
+      setKeywordResults(null)
+    } finally {
+      setIsKeywordSearching(false)
+    }
+  }, [])
+
+  /**
+   * Handle search mode changes
+   */
+  const handleSearchModeChange = (mode: 'name' | 'content') => {
+    setSearchMode(mode)
+    setKeywordResults(null)
+    setError('')
+
+    // If switching to content mode and there's a query, perform search
+    if (mode === 'content' && searchQuery.trim()) {
+      performKeywordSearch(searchQuery)
+    }
+  }
+
+  /**
+   * Handle search query changes
+   */
+  const handleSearchQueryChange = (query: string) => {
+    setSearchQuery(query)
+  }
+
+  /**
+   * Debounced keyword search effect
+   */
+  useEffect(() => {
+    if (searchMode !== 'content') return undefined
+
+    if (searchQuery.trim()) {
+      const timeoutId = setTimeout(() => {
+        performKeywordSearch(searchQuery)
+      }, 500) // 500ms debounce
+
+      return () => clearTimeout(timeoutId)
+    } else {
+      // Clear results when query is empty
+      setKeywordResults(null)
+      return undefined
+    }
+  }, [searchQuery, searchMode, performKeywordSearch])
 
   // Sync documents to ref for polling (prevents infinite effect restarts)
   useEffect(() => {
@@ -1170,31 +1257,75 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
         </TabsList>
 
         {/* Filters and Search */}
-        <div className="flex gap-4 items-center mt-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" aria-hidden="true" />
-            <Input
-              placeholder="Search documents..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 input-brighter h-9"
-              aria-label="Search documents by title"
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleFilters}
-            className="flex items-center gap-2 button-brighter"
+        <div className="space-y-3 mt-3">
+          {/* Search Mode Toggle */}
+          <RadioGroup
+            value={searchMode}
+            onValueChange={(value) => handleSearchModeChange(value as 'name' | 'content')}
+            className="flex items-center gap-6"
           >
-            <Filter className="h-4 w-4" />
-            Filters
-            {hasActiveFilters() && (
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {lawFirmFilter.length + fundManagerFilter.length + fundAdminFilter.length + jurisdictionFilter.length}
-              </Badge>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="name" id="search-name" />
+              <Label
+                htmlFor="search-name"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Search by Document
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="content" id="search-content" />
+              <Label
+                htmlFor="search-content"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Search by Content
+              </Label>
+            </div>
+          </RadioGroup>
+
+          {/* Search Input and Filters Button */}
+          <div className="flex gap-4 items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" aria-hidden="true" />
+              <Input
+                placeholder={
+                  searchMode === 'name'
+                    ? 'Search documents by name...'
+                    : 'Search document content by keywords...'
+                }
+                value={searchQuery}
+                onChange={(e) => handleSearchQueryChange(e.target.value)}
+                className="pl-10 input-brighter h-9"
+                aria-label={
+                  searchMode === 'name'
+                    ? 'Search documents by title'
+                    : 'Search documents by content keywords'
+                }
+              />
+              {isKeywordSearching && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                </div>
+              )}
+            </div>
+            {searchMode === 'name' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleFilters}
+                className="flex items-center gap-2 button-brighter"
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+                {hasActiveFilters() && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {lawFirmFilter.length + fundManagerFilter.length + fundAdminFilter.length + jurisdictionFilter.length}
+                  </Badge>
+                )}
+              </Button>
             )}
-          </Button>
+          </div>
         </div>
 
         {/* Metadata Filters */}
@@ -1290,6 +1421,43 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
             </Card>
           )}
 
+          {/* Keyword Search Results (Content Mode) */}
+          {searchMode === 'content' ? (
+            <KeywordResults
+              results={keywordResults?.results || []}
+              query={searchQuery}
+              isLoading={isKeywordSearching}
+              onViewDocument={async (documentId, pageNumber) => {
+                const doc = documents.find(d => d.id === documentId)
+                if (!doc) return
+
+                try {
+                  const response = await fetch(`/api/documents/${doc.id}/download`)
+                  if (!response.ok) throw new Error('Failed to retrieve document')
+
+                  const blob = await response.blob()
+                  const url = window.URL.createObjectURL(blob)
+
+                  // Add page number using PDF fragment identifier
+                  const urlWithPage = pageNumber ? `${url}#page=${pageNumber}` : url
+
+                  window.open(urlWithPage, '_blank', 'noopener,noreferrer')
+
+                  setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+                } catch (error) {
+                  clientLogger.error('Failed to open document', {
+                    error,
+                    documentId: doc.id,
+                    filename: doc.filename,
+                    pageNumber
+                  })
+                  alert(`Failed to open "${doc.title}". Please try again.`)
+                }
+              }}
+            />
+          ) : (
+            /* Document List Table (Name Mode) */
+            <>
           {filteredDocuments.length === 0 ? (
             <Card className="card-enhanced">
               <CardContent className="flex flex-col items-center justify-center p-12">
@@ -1805,6 +1973,8 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                 </div>
               )}
             </div>
+          )}
+          </>
           )}
         </TabsContent>
       </Tabs>

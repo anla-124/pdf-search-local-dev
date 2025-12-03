@@ -10,6 +10,7 @@
 -- ✅ Advanced indexing strategies for 100+ concurrent users
 -- ✅ Activity logging system for user tracking
 -- ✅ 3-stage similarity search with centroid-based filtering
+-- ✅ Keyword search with full-text indexing and page-level excerpts
 -- ✅ Multi-page chunk tracking for accurate page range searches
 -- ✅ Batch processing support for large documents
 -- ✅ Pre-aggregated views for admin dashboards
@@ -71,7 +72,6 @@ CREATE TABLE IF NOT EXISTS public.documents (
   content_type TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'uploading' CHECK (status IN ('uploading', 'queued', 'processing', 'completed', 'error', 'cancelled')),
   processing_error TEXT,
-  extracted_text TEXT,
   extracted_fields JSONB,
   metadata JSONB,
   page_count INTEGER,
@@ -295,21 +295,21 @@ CREATE INDEX IF NOT EXISTS idx_documents_user_status_created
 ON documents(user_id, status, created_at DESC)
 WHERE user_id IS NOT NULL AND status IS NOT NULL;
 
--- Metadata filtering indexes for business data
+-- Metadata filtering indexes for business data (BTREE for exact matching)
 CREATE INDEX IF NOT EXISTS idx_documents_metadata_law_firm
-ON documents USING GIN ((metadata->>'law_firm'))
+ON documents ((metadata->>'law_firm'))
 WHERE metadata->>'law_firm' IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_documents_metadata_fund_manager
-ON documents USING GIN ((metadata->>'fund_manager'))
+ON documents ((metadata->>'fund_manager'))
 WHERE metadata->>'fund_manager' IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_documents_metadata_fund_admin
-ON documents USING GIN ((metadata->>'fund_admin'))
+ON documents ((metadata->>'fund_admin'))
 WHERE metadata->>'fund_admin' IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_documents_metadata_jurisdiction
-ON documents USING GIN ((metadata->>'jurisdiction'))
+ON documents ((metadata->>'jurisdiction'))
 WHERE metadata->>'jurisdiction' IS NOT NULL;
 
 -- Centroid embedding index for fast Stage 0 similarity search filtering (IVFFlat)
@@ -397,6 +397,24 @@ CREATE INDEX IF NOT EXISTS idx_user_activity_logs_logged_at ON user_activity_log
 CREATE INDEX IF NOT EXISTS idx_user_activity_logs_user_uuid ON user_activity_logs(user_uuid);
 CREATE INDEX IF NOT EXISTS idx_user_activity_logs_action_type ON user_activity_logs(action_type);
 CREATE INDEX IF NOT EXISTS idx_user_activity_logs_resource_type ON user_activity_logs(resource_type);
+
+-- =====================================================
+-- 🔍 KEYWORD SEARCH INDEXES (Full-Text Search)
+-- =====================================================
+-- Added for keyword-based content search with PostgreSQL full-text search
+-- Enables fast searching within document content with page-level excerpts
+
+-- Full-text search index on document chunk content
+-- Uses GIN (Generalized Inverted Index) for fast full-text queries
+CREATE INDEX IF NOT EXISTS idx_document_embeddings_chunk_text_search
+ON document_embeddings
+USING GIN (to_tsvector('english', chunk_text))
+WHERE chunk_text IS NOT NULL;
+
+-- Page range index for efficient page-level search results
+-- Note: No WHERE clause to support both new (start_page_number) and legacy (page_number) chunks
+CREATE INDEX IF NOT EXISTS idx_document_embeddings_doc_page
+ON document_embeddings(document_id, start_page_number, end_page_number);
 
 -- =====================================================
 -- SECTION 5: ENTERPRISE VIEWS AND ANALYTICS
@@ -948,4 +966,110 @@ ORDER BY tablename;
 -- 3. Run 'npm run dev' to start the application
 -- 4. Access admin features at /admin for monitoring
 -- 5. Review PRODUCTION_MONITORING.md for alert configuration
+-- =====================================================
+
+-- =====================================================
+-- 🔍 KEYWORD SEARCH FUNCTION
+-- =====================================================
+-- Added for keyword-based content search with page-level results
+-- Returns documents matching keywords with excerpts and page numbers
+
+CREATE OR REPLACE FUNCTION search_document_keywords(
+  p_user_id UUID,
+  p_search_query TEXT,
+  p_max_pages_per_doc INTEGER DEFAULT 3,
+  p_max_documents INTEGER DEFAULT 20
+)
+RETURNS TABLE (
+  document_id UUID,
+  title TEXT,
+  filename TEXT,
+  total_matches BIGINT,
+  matches JSONB
+) AS $$
+BEGIN
+  RETURN QUERY
+  WITH ranked_matches AS (
+    SELECT
+      de.document_id,
+      d.title,
+      d.filename,
+      -- Handle multi-page chunks: use start_page as primary reference
+      -- Fallback to page_number for legacy single-page chunks
+      COALESCE(de.start_page_number, de.page_number) as page_num,
+      -- Generate excerpt with highlighted keywords (150-200 chars)
+      ts_headline(
+        'english',
+        de.chunk_text,
+        plainto_tsquery('english', p_search_query),
+        'MaxWords=40, MinWords=20, MaxFragments=1'
+      ) as excerpt,
+      -- Relevance score using PostgreSQL's built-in ranking
+      ts_rank(
+        to_tsvector('english', de.chunk_text),
+        plainto_tsquery('english', p_search_query)
+      ) as rank,
+      -- Deduplicate: get best excerpt per page (handles multiple chunks per page)
+      ROW_NUMBER() OVER (
+        PARTITION BY de.document_id, COALESCE(de.start_page_number, de.page_number)
+        ORDER BY ts_rank(
+          to_tsvector('english', de.chunk_text),
+          plainto_tsquery('english', p_search_query)
+        ) DESC
+      ) as page_rank
+    FROM document_embeddings de
+    INNER JOIN documents d ON d.id = de.document_id
+    WHERE
+      d.user_id = p_user_id                    -- Security: only user's documents
+      AND d.status = 'completed'                -- Only search completed documents
+      AND to_tsvector('english', de.chunk_text) @@ plainto_tsquery('english', p_search_query)
+  ),
+  top_pages_per_doc AS (
+    SELECT
+      rm.document_id,
+      rm.title,
+      rm.filename,
+      rm.page_num,
+      rm.excerpt,
+      rm.rank,
+      -- Limit to top N pages per document (default: 3)
+      ROW_NUMBER() OVER (
+        PARTITION BY rm.document_id
+        ORDER BY rm.rank DESC, rm.page_num ASC
+      ) as doc_page_rank
+    FROM ranked_matches rm
+    WHERE rm.page_rank = 1  -- Best excerpt per page only (deduplication)
+  ),
+  doc_matches AS (
+    SELECT
+      tpd.document_id,
+      tpd.title,
+      tpd.filename,
+      COUNT(*) as total_matches,
+      jsonb_agg(
+        jsonb_build_object(
+          'pageNumber', tpd.page_num,
+          'excerpt', tpd.excerpt,
+          'score', ROUND(tpd.rank::numeric, 4)
+        ) ORDER BY tpd.rank DESC
+      ) FILTER (WHERE tpd.doc_page_rank <= p_max_pages_per_doc) as matches,
+      MAX(tpd.rank) as max_rank
+    FROM top_pages_per_doc tpd
+    GROUP BY tpd.document_id, tpd.title, tpd.filename
+    ORDER BY max_rank DESC
+    LIMIT p_max_documents
+  )
+  SELECT
+    dm.document_id,
+    dm.title,
+    dm.filename,
+    dm.total_matches,
+    dm.matches
+  FROM doc_matches dm;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION search_document_keywords(UUID, TEXT, INTEGER, INTEGER) TO authenticated;
+
 -- =====================================================

@@ -333,14 +333,6 @@ export async function processDocument(documentId: string): Promise<ProcessDocume
           throw new ProcessingCancelledException(documentId)
         }
 
-        // Flatten extracted_text from document_content
-        if (document.document_content && document.document_content.length > 0) {
-          document.extracted_text = document.document_content[0]?.extracted_text ?? '';
-          delete document.document_content;
-        } else {
-          document.extracted_text = ''; // Ensure it's always a string
-        }
-
         logger.info('Document retrieved from database', { 
           documentId, 
           filename: document.filename,
@@ -982,7 +974,6 @@ async function processChunkWithRetry(
             .upsert(
               {
                 document_id: documentId,
-                vector_id: vectorId,
                 embedding,
                 chunk_text: pagedChunk.text,
                 chunk_index: pagedChunk.chunkIndex,

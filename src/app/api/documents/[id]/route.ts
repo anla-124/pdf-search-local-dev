@@ -43,11 +43,6 @@ export async function GET(
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
     }
 
-    if (document.document_content && document.document_content.length > 0) {
-      document.extracted_text = document.document_content[0]?.extracted_text ?? ''
-      delete document.document_content
-    }
-
     return NextResponse.json(document)
 
   } catch (error) {
@@ -195,14 +190,6 @@ export async function PATCH(
 
     if (!existingDocument) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 })
-    }
-
-    // Flatten extracted_text from document_content
-    if (existingDocument.document_content && existingDocument.document_content.length > 0) {
-      existingDocument.extracted_text = existingDocument.document_content[0]?.extracted_text ?? '';
-      delete existingDocument.document_content;
-    } else {
-      existingDocument.extracted_text = ''; // Ensure it's always a string
     }
 
     // Prepare for a full rename operation: storage, database, and metadata
