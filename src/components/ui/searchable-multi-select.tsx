@@ -144,7 +144,7 @@ export function SearchableMultiSelect({
       {isOpen && typeof window !== 'undefined' && createPortal(
         <Card 
           data-dropdown-portal
-          className="fixed z-[99999] p-0 shadow-lg bg-white dark:bg-gray-800 border-2" 
+          className="fixed z-[99999] p-0 shadow-lg bg-white border-2" 
           style={{ 
             top: dropdownPosition.top,
             left: dropdownPosition.left,

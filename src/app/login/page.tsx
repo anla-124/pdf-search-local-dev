@@ -18,7 +18,7 @@ export default function LoginPage() {
   }, [])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-blue-50 dark:bg-[#0a1329] transition-colors duration-300">
+    <div className="min-h-screen flex items-center justify-center bg-blue-50#0a1329] transition-colors duration-300">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -32,13 +32,13 @@ export default function LoginPage() {
               priority
             />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">PDF Search</h1>
+          <h1 className="text-2xl font-bold text-gray-900">PDF Search</h1>
         </div>
 
-        <Card className="shadow-xl border-0 bg-white/80 dark:bg-slate-900/90 dark:border-slate-700/50 backdrop-blur-sm">
+        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="space-y-1 pb-6">
-            <CardTitle className="text-xl text-center text-gray-900 dark:text-white">Welcome to PDF Search</CardTitle>
-            <CardDescription className="text-center text-gray-600 dark:text-gray-400">
+            <CardTitle className="text-xl text-center text-gray-900">Welcome to PDF Search</CardTitle>
+            <CardDescription className="text-center text-gray-600">
               {isLocalDev
                 ? 'Sign in with email or Google to get started'
                 : 'Sign in with your Google account to get started'
@@ -51,10 +51,10 @@ export default function LoginPage() {
                 <EmailPasswordLogin />
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-gray-300 dark:border-gray-600" />
+                    <span className="w-full border-t border-gray-300" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white dark:bg-gray-900 px-2 text-gray-500 dark:text-gray-400">
+                    <span className="bg-white px-2 text-gray-500">
                       Or continue with
                     </span>
                   </div>

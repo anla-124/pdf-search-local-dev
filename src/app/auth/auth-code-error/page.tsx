@@ -5,11 +5,11 @@ import { AlertCircle } from 'lucide-react'
 
 export default function AuthCodeErrorPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-            <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+          <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+            <AlertCircle className="h-6 w-6 text-red-600" />
           </div>
           <CardTitle className="text-2xl">Authentication Error</CardTitle>
           <CardDescription className="text-center">
@@ -18,7 +18,7 @@ export default function AuthCodeErrorPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+            <p className="text-sm text-gray-600 text-center">
               This could happen if you cancelled the sign-in process or if there was a temporary issue with the authentication service.
             </p>
             <div className="space-y-2">

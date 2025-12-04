@@ -89,17 +89,17 @@ export function SearchResultsTable({
   const themeColors = useMemo(() => {
     if (theme === 'emerald') {
       return {
-        iconBg: 'bg-emerald-100 dark:bg-emerald-900/50',
-        iconColor: 'text-emerald-600 dark:text-emerald-400',
+        iconBg: 'bg-emerald-100',
+        iconColor: 'text-emerald-600',
         compareButton: 'bg-emerald-600 hover:bg-emerald-700 focus-visible:ring-emerald-400',
-        downloadIconColor: 'text-emerald-600 dark:text-emerald-400'
+        downloadIconColor: 'text-emerald-600'
       }
     }
     return {
-      iconBg: 'bg-blue-100 dark:bg-blue-900/50',
-      iconColor: 'text-blue-600 dark:text-blue-400',
+      iconBg: 'bg-blue-100',
+      iconColor: 'text-blue-600',
       compareButton: 'bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-400',
-      downloadIconColor: 'text-blue-600 dark:text-blue-400'
+      downloadIconColor: 'text-blue-600'
     }
   }, [theme])
 
@@ -180,11 +180,11 @@ export function SearchResultsTable({
   }
 
   const getScoreBadgeColor = (score: number) => {
-    if (score >= 0.9) return 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'
-    if (score >= 0.8) return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'
-    if (score >= 0.7) return 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300'
-    if (score >= 0.5) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
-    return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'
+    if (score >= 0.9) return 'bg-green-100 text-green-800'
+    if (score >= 0.8) return 'bg-blue-100 text-blue-800'
+    if (score >= 0.7) return 'bg-orange-100 text-orange-800'
+    if (score >= 0.5) return 'bg-yellow-100 text-yellow-800'
+    return 'bg-red-100 text-red-800'
   }
 
   const resolveOptionLabel = (
@@ -245,7 +245,7 @@ export function SearchResultsTable({
         <div className="flex items-center justify-center p-12">
           <div className="flex flex-col items-center">
             <Loader2 className="h-12 w-12 text-blue-500 mb-4 animate-spin" />
-            <p className="text-gray-600 dark:text-gray-400">Searching for similar documents...</p>
+            <p className="text-gray-600">Searching for similar documents...</p>
           </div>
         </div>
       </Card>
@@ -258,10 +258,10 @@ export function SearchResultsTable({
         <div className="flex items-center justify-center p-12">
           <div className="flex flex-col items-center">
             <FileText className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
               No Similar Documents Found
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
+            <p className="text-gray-500 text-center max-w-md">
               Try adjusting your search parameters, lowering the minimum similarity threshold,
               or removing filters to find more results.
             </p>
@@ -285,7 +285,7 @@ export function SearchResultsTable({
         <TableHeader>
           <TableRow className="hover:bg-transparent bg-muted">
             <TableHead
-              className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 dark:border-gray-700 relative group rounded-tl-xl"
+              className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 relative group rounded-tl-xl"
               onClick={() => handleSort('name')}
               style={{ width: `${columnWidths.name}px` }}
             >
@@ -298,7 +298,7 @@ export function SearchResultsTable({
                 )}
               </div>
               <div
-                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400 dark:hover:bg-gray-500"
+                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400:bg-gray-500"
                 onMouseDown={(e) => {
                   e.stopPropagation()
                   handleMouseDown(e, 'name')
@@ -306,17 +306,17 @@ export function SearchResultsTable({
               />
             </TableHead>
             <TableHead
-              className="h-10 py-2 border-r border-gray-300 dark:border-gray-700 relative group"
+              className="h-10 py-2 border-r border-gray-300 relative group"
               style={{ width: `${columnWidths.metadata}px` }}
             >
               Metadata
               <div
-                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400 dark:hover:bg-gray-500"
+                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400:bg-gray-500"
                 onMouseDown={(e) => handleMouseDown(e, 'metadata')}
               />
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 dark:border-gray-700 relative group"
+              className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 relative group"
               onClick={() => handleSort('pages')}
               style={{ width: `${columnWidths.pages}px` }}
             >
@@ -329,7 +329,7 @@ export function SearchResultsTable({
                 )}
               </div>
               <div
-                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400 dark:hover:bg-gray-500"
+                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400:bg-gray-500"
                 onMouseDown={(e) => {
                   e.stopPropagation()
                   handleMouseDown(e, 'pages')
@@ -337,7 +337,7 @@ export function SearchResultsTable({
               />
             </TableHead>
             <TableHead
-              className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 dark:border-gray-700 relative group"
+              className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 relative group"
               onClick={() => handleSort('created')}
               style={{ width: `${columnWidths.created}px` }}
             >
@@ -350,7 +350,7 @@ export function SearchResultsTable({
                 )}
               </div>
               <div
-                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400 dark:hover:bg-gray-500"
+                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400:bg-gray-500"
                 onMouseDown={(e) => {
                   e.stopPropagation()
                   handleMouseDown(e, 'created')
@@ -358,12 +358,12 @@ export function SearchResultsTable({
               />
             </TableHead>
             <TableHead
-              className="h-10 py-2 border-r border-gray-300 dark:border-gray-700 relative group"
+              className="h-10 py-2 border-r border-gray-300 relative group"
               style={{ width: `${columnWidths.results}px` }}
             >
               Results
               <div
-                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400 dark:hover:bg-gray-500"
+                className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400:bg-gray-500"
                 onMouseDown={(e) => handleMouseDown(e, 'results')}
               />
             </TableHead>
@@ -390,7 +390,7 @@ export function SearchResultsTable({
                     <div className="flex-1 min-w-0">
                       <button
                         onClick={() => viewPdf(result.document)}
-                        className="font-medium text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 truncate text-left cursor-pointer"
+                        className="font-medium text-gray-900 hover:text-gray-700:text-gray-300 truncate text-left cursor-pointer"
                       >
                         {result.document.title}
                       </button>
@@ -404,41 +404,41 @@ export function SearchResultsTable({
                     <div className="flex items-center gap-1.5">
                       <Scale className="h-3 w-3 flex-shrink-0 text-gray-400" />
                       {result.document.metadata?.law_firm ? (
-                        <span className="truncate text-gray-600 dark:text-gray-300">
+                        <span className="truncate text-gray-600">
                           {resolveOptionLabel(result.document.metadata.law_firm, LAW_FIRM_OPTIONS)}
                         </span>
                       ) : (
-                        <span className="truncate text-orange-500 dark:text-orange-400">(blank)</span>
+                        <span className="truncate text-orange-500">(blank)</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <UserCircle className="h-3 w-3 flex-shrink-0 text-gray-400" />
                       {result.document.metadata?.fund_manager ? (
-                        <span className="truncate text-gray-600 dark:text-gray-300">
+                        <span className="truncate text-gray-600">
                           {resolveOptionLabel(result.document.metadata.fund_manager, FUND_MANAGER_OPTIONS)}
                         </span>
                       ) : (
-                        <span className="truncate text-orange-500 dark:text-orange-400">(blank)</span>
+                        <span className="truncate text-orange-500">(blank)</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <ClipboardList className="h-3 w-3 flex-shrink-0 text-gray-400" />
                       {result.document.metadata?.fund_admin ? (
-                        <span className="truncate text-gray-600 dark:text-gray-300">
+                        <span className="truncate text-gray-600">
                           {resolveOptionLabel(result.document.metadata.fund_admin, FUND_ADMIN_OPTIONS)}
                         </span>
                       ) : (
-                        <span className="truncate text-orange-500 dark:text-orange-400">(blank)</span>
+                        <span className="truncate text-orange-500">(blank)</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Globe className="h-3 w-3 flex-shrink-0 text-gray-400" />
                       {result.document.metadata?.jurisdiction ? (
-                        <span className="truncate text-gray-600 dark:text-gray-300">
+                        <span className="truncate text-gray-600">
                           {resolveOptionLabel(result.document.metadata.jurisdiction, JURISDICTION_OPTIONS)}
                         </span>
                       ) : (
-                        <span className="truncate text-orange-500 dark:text-orange-400">(blank)</span>
+                        <span className="truncate text-orange-500">(blank)</span>
                       )}
                     </div>
                   </div>
@@ -446,14 +446,14 @@ export function SearchResultsTable({
 
                 {/* Pages Column */}
                 <TableCell>
-                  <div className="text-xs text-gray-600 dark:text-gray-300">
+                  <div className="text-xs text-gray-600">
                     {result.document.page_count ?? '-'}
                   </div>
                 </TableCell>
 
                 {/* Created Column */}
                 <TableCell>
-                  <div className="text-xs text-gray-600 dark:text-gray-300">
+                  <div className="text-xs text-gray-600">
                     {format(new Date(result.document.created_at), 'MMM dd, yyyy HH:mm')}
                   </div>
                 </TableCell>

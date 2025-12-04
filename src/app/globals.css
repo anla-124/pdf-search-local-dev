@@ -25,29 +25,6 @@
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
   }
-
-  .dark {
-    --background: 224 71.4% 3.3%;
-    --foreground: 210 20% 98%;
-    --card: 224 71.4% 3.9%;
-    --card-foreground: 210 20% 98%;
-    --sidebar: 224 71.4% 3.3%;
-    --popover: 224 71.4% 4.9%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 215 27.9% 16.9%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 215 27.9% 16.9%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 215 27.9% 21.9%;
-    --input: 215 27.9% 21.9%;
-    --ring: 216 12.2% 83.9%;
-  }
 }
 
 @layer base {
@@ -73,86 +50,16 @@
 }
 
 @layer components {
-  /* Enhanced dark mode card styling */
-  .dark .card-enhanced {
-    background: rgb(15 23 42) !important;
-    @apply border-slate-700/50;
-    box-shadow:
-      0 4px 6px -1px rgba(0, 0, 0, 0.3),
-      0 2px 4px -1px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
-  .dark .card-enhanced:hover {
-    @apply border-slate-600/60;
-    box-shadow:
-      0 10px 15px -3px rgba(0, 0, 0, 0.4),
-      0 4px 6px -2px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transform: translateY(-1px);
-  }
-
-  /* Enhanced sidebar styling */
-  .dark .sidebar-enhanced {
-    background: rgb(15 23 42) !important;
-    @apply border-slate-700/50;
-    box-shadow:
-      0 4px 6px -1px rgba(0, 0, 0, 0.3),
-      0 2px 4px -1px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
-  /* Enhanced filter panel */
-  .dark .filter-panel-enhanced {
-    @apply bg-slate-800/60 border-slate-600/40 backdrop-blur-sm;
-    box-shadow:
-      0 4px 6px -1px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
-  /* Enhanced button styling */
-  .dark .button-enhanced {
-    @apply bg-slate-700 border-slate-600 hover:bg-slate-600;
-    box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  }
-
-  /* Primary button glow in dark mode */
-  .dark button[class*="bg-primary"], .dark button[class*="bg-blue"] {
-    box-shadow: 0 0 20px -5px rgba(59, 130, 246, 0.3);
-  }
-
-  .dark button[class*="bg-primary"]:hover, .dark button[class*="bg-blue"]:hover {
-    box-shadow: 0 0 25px -3px rgba(59, 130, 246, 0.5);
-  }
-
-  /* Input field enhancements */
-  .dark .input-enhanced {
-    @apply bg-slate-800/60 border-slate-600/50 focus:border-blue-500/60 focus:ring-blue-500/20;
-    box-shadow:
-      inset 0 1px 2px rgba(0, 0, 0, 0.3),
-      0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
-  /* Darker muted background (40% darker than muted) */
+  /* Muted background utility */
   .bg-muted-darker {
     background-color: hsl(210 40% 57.6%);
-  }
-
-  .dark .bg-muted-darker {
-    background-color: hsl(215 27.9% 10.1%);
   }
 
   .hover\:bg-muted-darker\/80:hover {
     background-color: hsl(210 40% 57.6% / 0.8);
   }
 
-  .dark .hover\:bg-muted-darker\/80:hover {
-    background-color: hsl(215 27.9% 10.1% / 0.8);
-  }
-
-  /* Buttons and inputs with better contrast in light mode */
+  /* Buttons and inputs with better contrast */
   .button-brighter {
     background-color: hsl(0 0% 96%) !important;
     border-color: hsl(0 0% 89%) !important;
@@ -172,43 +79,5 @@
   .input-brighter:focus {
     border-color: hsl(217.2 91.2% 59.8%) !important;
     background-color: hsl(0 0% 100%) !important;
-  }
-
-  /* Buttons and inputs matching background in dark mode */
-  .dark .button-brighter {
-    background-color: hsl(224 71.4% 3.3%) !important;
-    border-color: hsl(215 27.9% 21.9%) !important;
-    transition: all 0.2s ease;
-  }
-
-  .dark .button-brighter:hover {
-    background-color: hsl(215 27.9% 16.9%) !important;
-    border-color: hsl(215 27.9% 30%) !important;
-  }
-
-  .dark .input-brighter {
-    background-color: hsl(224 71.4% 3.3%) !important;
-    border-color: hsl(215 27.9% 21.9%) !important;
-  }
-
-  .dark .input-brighter:focus {
-    border-color: hsl(217.2 91.2% 59.8%) !important;
-  }
-
-
-  /* Enhanced dropdown styling */
-  .dark [data-radix-select-trigger] {
-    @apply bg-slate-800/60 border-slate-600/70 hover:border-slate-500/80;
-    box-shadow: 
-      0 1px 2px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  }
-
-  .dark [data-radix-select-content] {
-    @apply bg-slate-800/95 border-slate-600/70 backdrop-blur-xl;
-    box-shadow: 
-      0 10px 15px -3px rgba(0, 0, 0, 0.4),
-      0 4px 6px -2px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 }

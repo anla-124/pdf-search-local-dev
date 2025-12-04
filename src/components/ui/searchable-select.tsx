@@ -116,7 +116,7 @@ export function SearchableSelect({
   const dropdownContent = (
     <Card
       data-dropdown-portal={!disablePortal ? true : undefined}
-      className="p-0 shadow-lg bg-white dark:bg-gray-800 border"
+      className="p-0 shadow-lg bg-white border"
     >
       <div className="p-2">
         <div className="relative">

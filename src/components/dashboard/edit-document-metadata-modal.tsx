@@ -217,7 +217,7 @@ export function EditDocumentMetadataModal({
           </div>
 
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 dark:bg-red-950/50 p-3 rounded">
+          <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
             {error}
           </div>
         )}

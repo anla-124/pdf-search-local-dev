@@ -12,7 +12,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-slate-950">
+    <div className="flex h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         <ErrorBoundary>
@@ -22,7 +22,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile Header */}
-        <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-950/95 backdrop-blur-xl">
+        <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200 bg-white backdrop-blur-xl">
           <ErrorBoundary>
             <MobileNav />
           </ErrorBoundary>
@@ -36,7 +36,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 className="h-8 w-8 object-contain"
               />
             </div>
-            <span className="text-lg font-bold text-gray-900 dark:text-white">
+            <span className="text-lg font-bold text-gray-900">
               PDF AI
             </span>
           </div>

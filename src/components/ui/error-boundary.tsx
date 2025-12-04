@@ -55,22 +55,22 @@ class ErrorBoundaryClass extends React.Component<ErrorBoundaryProps, ErrorBounda
 
 function DefaultErrorFallback({ error, resetError }: { error: Error; resetError: () => void }) {
   return (
-    <Card className="border-red-200 dark:border-red-800">
+    <Card className="border-red-200">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+        <CardTitle className="flex items-center gap-2 text-red-700">
           <AlertTriangle className="h-5 w-5" />
           Something went wrong
         </CardTitle>
-        <CardDescription className="text-red-600 dark:text-red-400">
+        <CardDescription className="text-red-600">
           An error occurred while rendering this component
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <details className="text-sm">
-          <summary className="cursor-pointer font-medium text-gray-900 dark:text-gray-100 mb-2">
+          <summary className="cursor-pointer font-medium text-gray-900 mb-2">
             Error Details
           </summary>
-          <pre className="bg-red-50 dark:bg-red-950/50 p-3 rounded text-xs text-red-800 dark:text-red-200 overflow-auto">
+          <pre className="bg-red-50 p-3 rounded text-xs text-red-800 overflow-auto">
             {error.message}
           </pre>
         </details>

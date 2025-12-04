@@ -3,7 +3,6 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { createClient } from '@/lib/supabase/client'
 import { LogOut } from 'lucide-react'
 import Image from 'next/image'
@@ -43,10 +42,10 @@ export function Sidebar() {
 
   return (
     <div
-      className="flex h-full w-64 flex-col border-r border-gray-200 dark:border-slate-700/50 bg-white sidebar-enhanced transition-colors duration-300"
+      className="flex h-full w-64 flex-col border-r border-gray-200 bg-white transition-colors duration-300"
     >
       {/* Logo */}
-      <div className="flex h-16 items-center px-6 border-b border-gray-200 dark:border-slate-700/50">
+      <div className="flex h-16 items-center px-6 border-b border-gray-200">
         <Link href="/dashboard" className="flex items-center space-x-3">
           <div className="flex h-10 w-10 items-center justify-center">
             <Image
@@ -57,7 +56,7 @@ export function Sidebar() {
               className="h-10 w-10 object-contain"
             />
           </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-white">
+          <span className="text-xl font-bold text-gray-900">
             PDF Search
           </span>
         </Link>
@@ -74,12 +73,12 @@ export function Sidebar() {
               className={`
                 flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
                 ${isActive
-                  ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                 }
               `}
             >
-              <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+              <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-blue-600' : ''}`} />
               {item.name}
               {item.badge && (
                 <Badge variant="secondary" className="ml-auto text-xs">
@@ -97,13 +96,12 @@ export function Sidebar() {
 
       {/* User section */}
       <div className="p-3 space-y-2">
-        <ThemeToggle />
         <Button
           variant="ghost"
           size="sm"
           onClick={handleLogout}
           disabled={isLoading}
-          className="w-full justify-start text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400"
+          className="w-full justify-start text-gray-700 hover:text-red-600"
         >
           <LogOut className="mr-3 h-4 w-4" />
           {isLoading ? 'Logging out...' : 'Logout'}

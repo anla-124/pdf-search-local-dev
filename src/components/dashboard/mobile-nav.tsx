@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { clientLogger } from '@/lib/client-logger'
 import { 
   Upload, 
@@ -64,12 +63,12 @@ export function MobileNav() {
       <SheetContent side="left" className="pl-1 pr-0 w-64">
         <div className="flex h-full w-full flex-col">
           {/* Logo */}
-          <div className="flex h-16 items-center px-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex h-16 items-center px-6 border-b border-gray-200">
             <Link href="/dashboard" className="flex items-center space-x-2" onClick={() => setOpen(false)}>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">
+              <span className="text-xl font-bold text-gray-900">
                 PDF Search
               </span>
             </Link>
@@ -88,12 +87,12 @@ export function MobileNav() {
                     flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
                     ${
                       isActive
-                        ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white'
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                     }
                   `}
                 >
-                  <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                  <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-blue-600' : ''}`} />
                   {item.name}
                   {item.badge && (
                     <Badge variant="secondary" className="ml-auto text-xs">
@@ -112,7 +111,7 @@ export function MobileNav() {
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-start text-gray-700 dark:text-gray-300"
+              className="w-full justify-start text-gray-700"
             >
               <User className="mr-3 h-4 w-4" />
               Profile
@@ -120,18 +119,17 @@ export function MobileNav() {
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-start text-gray-700 dark:text-gray-300"
+              className="w-full justify-start text-gray-700"
             >
               <Settings className="mr-3 h-4 w-4" />
               Settings
             </Button>
-            <ThemeToggle />
             <Button
               variant="ghost"
               size="sm"
               onClick={handleLogout}
               disabled={isLoading}
-              className="w-full justify-start text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400"
+              className="w-full justify-start text-gray-700 hover:text-red-600"
             >
               <LogOut className="mr-3 h-4 w-4" />
               {isLoading ? 'Logging out...' : 'Logout'}

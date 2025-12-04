@@ -396,8 +396,8 @@ const canUpload = () => {
         <div
           className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors sm:p-5 ${
             isDragOver
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10'
-              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+              ? 'border-blue-500 bg-blue-50'
+              : 'border-gray-300 hover:border-gray-400'
           }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -405,7 +405,7 @@ const canUpload = () => {
           onClick={() => document.getElementById('file-upload')?.click()}
         >
           <FileText className="mx-auto h-10 w-10 text-gray-400 mb-3 sm:h-12 sm:w-12 sm:mb-4" />
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1.5 sm:mb-2">
+          <p className="text-sm text-gray-600 mb-1.5 sm:mb-2">
             Drop PDF files here or click to browse
           </p>
           <Input
@@ -435,7 +435,7 @@ const canUpload = () => {
             
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {files.map((uploadFile) => (
-                <div key={uploadFile.id} className="border rounded-lg p-3 space-y-2.5 sm:p-4 sm:space-y-3 border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/20">
+                <div key={uploadFile.id} className="border rounded-lg p-3 space-y-2.5 sm:p-4 sm:space-y-3 border-gray-200 bg-gray-50/50">
                   {/* File Header */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">

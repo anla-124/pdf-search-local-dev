@@ -393,7 +393,7 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
                   onValueChange={value => setSourceMinScore((value[0] ?? 70) / 100)}
                   className="w-full"
                 />
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
                   <span>0%</span>
                   <span>50%</span>
                   <span>100%</span>
@@ -412,7 +412,7 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
                   onValueChange={value => setTargetMinScore((value[0] ?? 70) / 100)}
                   className="w-full"
                 />
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
                   <span>0%</span>
                   <span>50%</span>
                   <span>100%</span>

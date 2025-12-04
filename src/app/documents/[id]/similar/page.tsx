@@ -74,9 +74,9 @@ export default async function SimilarDocumentsPage({ params }: PageProps) {
                 Back to Dashboard
               </Button>
             </Link>
-            <div className="h-6 border-l border-gray-300 dark:border-gray-600" />
+            <div className="h-6 border-l border-gray-300" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                 <Sparkles className="h-6 w-6 text-blue-500" />
                 General Search
               </h1>
@@ -85,9 +85,9 @@ export default async function SimilarDocumentsPage({ params }: PageProps) {
         </div>
 
         {/* Source Document Card */}
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+        <Card className="border-blue-200 bg-blue-50/50">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
+            <CardTitle className="flex items-center gap-2 text-blue-900">
               <Target className="h-5 w-5" />
               Source Document
             </CardTitle>
@@ -95,14 +95,14 @@ export default async function SimilarDocumentsPage({ params }: PageProps) {
           <CardContent>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
-                  <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <FileText className="h-6 w-6 text-blue-600" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                  <h3 className="font-semibold text-gray-900">
                     {document.title}
                   </h3>
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
                     <span>{formatFileSize(document.file_size)}</span>
                     <span>{formatUploadDate(document.created_at)}</span>
                     {document.page_count && (
@@ -114,33 +114,33 @@ export default async function SimilarDocumentsPage({ params }: PageProps) {
                     <div className="flex items-center gap-1">
                       <Scale className="h-3 w-3 text-gray-400" />
                       {document.metadata?.law_firm ? (
-                        <span className="text-gray-600 dark:text-gray-300">{resolveOptionLabel(document.metadata?.law_firm, LAW_FIRM_OPTIONS)}</span>
+                        <span className="text-gray-600">{resolveOptionLabel(document.metadata?.law_firm, LAW_FIRM_OPTIONS)}</span>
                       ) : (
-                        <span className="text-orange-500 dark:text-orange-400">(blank)</span>
+                        <span className="text-orange-500">(blank)</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1">
                       <UserCircle className="h-3 w-3 text-gray-400" />
                       {document.metadata?.fund_manager ? (
-                        <span className="text-gray-600 dark:text-gray-300">{resolveOptionLabel(document.metadata?.fund_manager, FUND_MANAGER_OPTIONS)}</span>
+                        <span className="text-gray-600">{resolveOptionLabel(document.metadata?.fund_manager, FUND_MANAGER_OPTIONS)}</span>
                       ) : (
-                        <span className="text-orange-500 dark:text-orange-400">(blank)</span>
+                        <span className="text-orange-500">(blank)</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1">
                       <ClipboardList className="h-3 w-3 text-gray-400" />
                       {document.metadata?.fund_admin ? (
-                        <span className="text-gray-600 dark:text-gray-300">{resolveOptionLabel(document.metadata?.fund_admin, FUND_ADMIN_OPTIONS)}</span>
+                        <span className="text-gray-600">{resolveOptionLabel(document.metadata?.fund_admin, FUND_ADMIN_OPTIONS)}</span>
                       ) : (
-                        <span className="text-orange-500 dark:text-orange-400">(blank)</span>
+                        <span className="text-orange-500">(blank)</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1">
                       <Globe className="h-3 w-3 text-gray-400" />
                       {document.metadata?.jurisdiction ? (
-                        <span className="text-gray-600 dark:text-gray-300">{resolveOptionLabel(document.metadata?.jurisdiction, JURISDICTION_OPTIONS)}</span>
+                        <span className="text-gray-600">{resolveOptionLabel(document.metadata?.jurisdiction, JURISDICTION_OPTIONS)}</span>
                       ) : (
-                        <span className="text-orange-500 dark:text-orange-400">(blank)</span>
+                        <span className="text-orange-500">(blank)</span>
                       )}
                     </div>
                   </div>

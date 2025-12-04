@@ -112,7 +112,7 @@ export function EmailPasswordLogin() {
         />
       </div>
       {error && (
-        <div className="text-red-500 dark:text-red-400 text-sm">{error}</div>
+        <div className="text-red-500 text-sm">{error}</div>
       )}
       <Button
         type="submit"

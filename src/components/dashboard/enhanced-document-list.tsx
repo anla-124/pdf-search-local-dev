@@ -104,7 +104,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
   const [isKeywordSearching, setIsKeywordSearching] = useState(false)
   const [isLoadingMoreKeywordDocs, setIsLoadingMoreKeywordDocs] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<string>('created_at')
+  const [sortBy, setSortBy] = useState<string>('updated_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   // Metadata filters
@@ -171,7 +171,6 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
     metadata: 180,
     pages: 80,
     lastModified: 180,
-    created: 180,
     actions: 180
   })
 
@@ -1125,43 +1124,43 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
       case 'completed':
         return {
           icon: CheckCircle,
-          color: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/50 dark:text-green-400 dark:border-green-800',
+          color: 'bg-green-50 text-green-700 border-green-200',
           label: 'Completed'
         }
       case 'processing':
         return {
           icon: Clock,
-          color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800',
+          color: 'bg-blue-50 text-blue-700 border-blue-200',
           label: 'Processing'
         }
       case 'uploading':
         return {
           icon: Clock,
-          color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800',
+          color: 'bg-amber-50 text-amber-700 border-amber-200',
           label: 'Uploading'
         }
       case 'queued':
         return {
           icon: Clock,
-          color: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-400 dark:border-purple-800',
+          color: 'bg-purple-50 text-purple-700 border-purple-200',
           label: 'Queued'
         }
       case 'error':
         return {
           icon: AlertCircle,
-          color: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-400 dark:border-red-800',
+          color: 'bg-red-50 text-red-700 border-red-200',
           label: 'Error'
         }
       case 'cancelled':
         return {
           icon: X,
-          color: 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-950/50 dark:text-gray-400 dark:border-gray-800',
+          color: 'bg-gray-50 text-gray-700 border-gray-200',
           label: 'Cancelled'
         }
       default:
         return {
           icon: FileText,
-          color: 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-950/50 dark:text-gray-400 dark:border-gray-800',
+          color: 'bg-gray-50 text-gray-700 border-gray-200',
           label: 'Unknown'
         }
     }
@@ -1206,8 +1205,8 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
         <Card>
           <CardContent className="flex items-center justify-center p-12">
             <div className="animate-pulse flex flex-col items-center">
-              <div className="h-12 w-12 bg-gray-200 dark:bg-gray-700 rounded-lg mb-4"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+              <div className="h-12 w-12 bg-gray-200 rounded-lg mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-32"></div>
             </div>
           </CardContent>
         </Card>
@@ -1452,11 +1451,11 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
 
         <TabsContent value={statusFilter} className="mt-3">
           {error && (
-            <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+            <Card className="border-red-200 bg-red-50">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-red-600" />
-                  <p className="text-red-800 dark:text-red-200">{error}</p>
+                  <p className="text-red-800">{error}</p>
                 </div>
               </CardContent>
             </Card>
@@ -1533,7 +1532,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
             <Card className="card-enhanced">
               <CardContent className="flex flex-col items-center justify-center p-12">
                 <FileText className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
                   No documents to show
                 </h3>
               </CardContent>
@@ -1549,7 +1548,6 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                     <col style={{ width: `${columnWidths.metadata}px` }} />
                     <col style={{ width: `${columnWidths.pages}px` }} />
                     <col style={{ width: `${columnWidths.lastModified}px` }} />
-                    <col style={{ width: `${columnWidths.created}px` }} />
                     <col style={{ width: `${columnWidths.actions}px` }} />
                   </colgroup>
                   <TableHeader>
@@ -1570,7 +1568,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                         />
                       </TableHead>
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 dark:border-gray-700 relative group"
+                        className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 relative group"
                         onClick={() => handleSort('title')}
                         style={{ width: `${columnWidths.name}px` }}
                       >
@@ -1583,22 +1581,22 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                           )}
                         </div>
                         <div
-                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400 dark:hover:bg-gray-500"
+                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400"
                           onMouseDown={(e) => {
                             e.stopPropagation()
                             handleMouseDown(e, 'name')
                           }}
                         />
                       </TableHead>
-                      <TableHead className="h-10 py-2 border-r border-gray-300 dark:border-gray-700 relative group" style={{ width: `${columnWidths.metadata}px` }}>
+                      <TableHead className="h-10 py-2 border-r border-gray-300 relative group" style={{ width: `${columnWidths.metadata}px` }}>
                         Metadata
                         <div
-                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400 dark:hover:bg-gray-500"
+                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400"
                           onMouseDown={(e) => handleMouseDown(e, 'metadata')}
                         />
                       </TableHead>
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 dark:border-gray-700 relative group"
+                        className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 relative group"
                         onClick={() => handleSort('page_count')}
                         style={{ width: `${columnWidths.pages}px` }}
                       >
@@ -1611,7 +1609,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                           )}
                         </div>
                         <div
-                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400 dark:hover:bg-gray-500"
+                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400"
                           onMouseDown={(e) => {
                             e.stopPropagation()
                             handleMouseDown(e, 'pages')
@@ -1619,7 +1617,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                         />
                       </TableHead>
                       <TableHead
-                        className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 dark:border-gray-700 relative group"
+                        className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 relative group"
                         onClick={() => handleSort('updated_at')}
                         style={{ width: `${columnWidths.lastModified}px` }}
                       >
@@ -1632,31 +1630,10 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                           )}
                         </div>
                         <div
-                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400 dark:hover:bg-gray-500"
+                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400"
                           onMouseDown={(e) => {
                             e.stopPropagation()
                             handleMouseDown(e, 'lastModified')
-                          }}
-                        />
-                      </TableHead>
-                      <TableHead
-                        className="cursor-pointer hover:bg-muted/50 h-10 py-2 border-r border-gray-300 dark:border-gray-700 relative group"
-                        onClick={() => handleSort('created_at')}
-                        style={{ width: `${columnWidths.created}px` }}
-                      >
-                        <div className="flex items-center gap-2">
-                          Created
-                          {sortBy === 'created_at' ? (
-                            sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-                          ) : (
-                            <ArrowUpDown className="h-4 w-4 opacity-50" />
-                          )}
-                        </div>
-                        <div
-                          className="absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-gray-400 dark:hover:bg-gray-500"
-                          onMouseDown={(e) => {
-                            e.stopPropagation()
-                            handleMouseDown(e, 'created')
                           }}
                         />
                       </TableHead>
@@ -1674,7 +1651,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                         <TableRow
                           key={document.id}
                           data-state={isSelected ? "selected" : undefined}
-                          className={isSource && !isSelected ? "bg-emerald-50 dark:bg-emerald-950/20" : ""}
+                          className={isSource && !isSelected ? "bg-emerald-50" : ""}
                         >
                           {/* Checkbox */}
                           <TableCell>
@@ -1689,20 +1666,20 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                           {/* Name Column */}
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                                <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                              <div className="p-2 bg-blue-50 rounded-lg">
+                                <FileText className="h-4 w-4 text-blue-600" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                   {document.status === 'completed' ? (
                                     <button
                                       onClick={() => viewDocument(document)}
-                                      className="font-medium text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 truncate text-left cursor-pointer"
+                                      className="font-medium text-gray-900 hover:text-gray-700 truncate text-left cursor-pointer"
                                     >
                                       {document.title}
                                     </button>
                                   ) : (
-                                    <span className="font-medium text-gray-900 dark:text-white truncate">
+                                    <span className="font-medium text-gray-900 truncate">
                                       {document.title}
                                     </span>
                                   )}
@@ -1721,7 +1698,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                                       : statusConfig.label}
                                   </Badge>
                                   {document.processing_error && (
-                                    <span className="text-xs text-red-600 dark:text-red-400 truncate">
+                                    <span className="text-xs text-red-600 truncate">
                                       {document.processing_error}
                                     </span>
                                   )}
@@ -1736,33 +1713,33 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                               <div className="flex items-center gap-1.5">
                                 <Scale className="h-3 w-3 flex-shrink-0 text-gray-400" />
                                 {document.metadata?.law_firm ? (
-                                  <span className="truncate text-gray-600 dark:text-gray-300">{resolveOptionLabel(document.metadata.law_firm, LAW_FIRM_OPTIONS)}</span>
+                                  <span className="truncate text-gray-600">{resolveOptionLabel(document.metadata.law_firm, LAW_FIRM_OPTIONS)}</span>
                                 ) : (
-                                  <span className="truncate text-orange-500 dark:text-orange-400">(blank)</span>
+                                  <span className="truncate text-orange-500">(blank)</span>
                                 )}
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <UserCircle className="h-3 w-3 flex-shrink-0 text-gray-400" />
                                 {document.metadata?.fund_manager ? (
-                                  <span className="truncate text-gray-600 dark:text-gray-300">{resolveOptionLabel(document.metadata.fund_manager, FUND_MANAGER_OPTIONS)}</span>
+                                  <span className="truncate text-gray-600">{resolveOptionLabel(document.metadata.fund_manager, FUND_MANAGER_OPTIONS)}</span>
                                 ) : (
-                                  <span className="truncate text-orange-500 dark:text-orange-400">(blank)</span>
+                                  <span className="truncate text-orange-500">(blank)</span>
                                 )}
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <ClipboardList className="h-3 w-3 flex-shrink-0 text-gray-400" />
                                 {document.metadata?.fund_admin ? (
-                                  <span className="truncate text-gray-600 dark:text-gray-300">{resolveOptionLabel(document.metadata.fund_admin, FUND_ADMIN_OPTIONS)}</span>
+                                  <span className="truncate text-gray-600">{resolveOptionLabel(document.metadata.fund_admin, FUND_ADMIN_OPTIONS)}</span>
                                 ) : (
-                                  <span className="truncate text-orange-500 dark:text-orange-400">(blank)</span>
+                                  <span className="truncate text-orange-500">(blank)</span>
                                 )}
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <Globe className="h-3 w-3 flex-shrink-0 text-gray-400" />
                                 {document.metadata?.jurisdiction ? (
-                                  <span className="truncate text-gray-600 dark:text-gray-300">{resolveOptionLabel(document.metadata.jurisdiction, JURISDICTION_OPTIONS)}</span>
+                                  <span className="truncate text-gray-600">{resolveOptionLabel(document.metadata.jurisdiction, JURISDICTION_OPTIONS)}</span>
                                 ) : (
-                                  <span className="truncate text-orange-500 dark:text-orange-400">(blank)</span>
+                                  <span className="truncate text-orange-500">(blank)</span>
                                 )}
                               </div>
                             </div>
@@ -1770,22 +1747,15 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
 
                           {/* Pages Column */}
                           <TableCell>
-                            <div className="text-xs text-gray-600 dark:text-gray-300">
+                            <div className="text-xs text-gray-600">
                               {document.page_count ?? '-'}
                             </div>
                           </TableCell>
 
                           {/* Last Modified Column */}
                           <TableCell>
-                            <div className="text-xs text-gray-600 dark:text-gray-300">
+                            <div className="text-xs text-gray-600">
                               {format(new Date(document.updated_at), 'MMM dd, yyyy HH:mm')}
-                            </div>
-                          </TableCell>
-
-                          {/* Created Column */}
-                          <TableCell>
-                            <div className="text-xs text-gray-600 dark:text-gray-300">
-                              {format(new Date(document.created_at), 'MMM dd, yyyy HH:mm')}
                             </div>
                           </TableCell>
 
@@ -1818,7 +1788,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                                       className="h-8 button-brighter"
                                     >
                                       <Sparkles className="h-3 w-3 mr-1" />
-                                      Search
+                                      Semantic Search
                                     </Button>
                                   )}
                                 </>
@@ -1901,7 +1871,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                                         >
                                           <AlertDialogTrigger asChild>
                                             <DropdownMenuItem
-                                              className="flex items-center text-orange-600 dark:text-orange-400"
+                                              className="flex items-center text-orange-600"
                                               onSelect={(e) => e.preventDefault()}
                                             >
                                               <X className="h-4 w-4 mr-2" />
@@ -1914,7 +1884,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                                               <AlertDialogDescription>
                                                 Are you sure you want to cancel processing for &quot;{document.title}&quot;?
                                                 {isCancelling && (
-                                                  <span className="block mt-2 text-orange-600 dark:text-orange-400">
+                                                  <span className="block mt-2 text-orange-600">
                                                     Cancelling and cleaning up...
                                                   </span>
                                                 )}
@@ -1948,7 +1918,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
 
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    className="flex items-center text-red-600 dark:text-red-400"
+                                    className="flex items-center text-red-600"
                                     onSelect={() => {
                                       setDeleteDialog({ document, isOpen: true, isDeleting: false })
                                     }}
@@ -1970,7 +1940,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
               {/* Pagination Controls */}
               {filteredDocuments.length > documentsPerPage && (
                 <div className="flex items-center justify-between pt-4">
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                  <div className="text-sm text-gray-500">
                     Showing {startIndex + 1} to {Math.min(endIndex, filteredDocuments.length)} of {filteredDocuments.length} documents
                   </div>
                   <div className="flex items-center gap-2">
