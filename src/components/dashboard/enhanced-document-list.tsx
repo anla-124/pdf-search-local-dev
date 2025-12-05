@@ -1541,7 +1541,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
             <div className="space-y-4">
               {/* Table */}
               <Card className="card-enhanced">
-                <Table>
+                <Table style={{ tableLayout: 'fixed' }}>
                   <colgroup>
                     <col style={{ width: `${columnWidths.checkbox}px` }} />
                     <col style={{ width: `${columnWidths.name}px` }} />

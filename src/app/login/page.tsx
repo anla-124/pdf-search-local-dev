@@ -32,9 +32,9 @@ export default function LoginPage() {
         <Image
           src="/logo/short-logo-white.svg"
           alt="PDF Search Logo"
-          width={120}
-          height={40}
-          className="h-10 w-auto"
+          width={90}
+          height={30}
+          className="h-8 w-auto"
           priority
         />
       </div>
@@ -43,7 +43,7 @@ export default function LoginPage() {
         <Card className="shadow-xl border-0 bg-white">
           <CardContent className="pt-8 pb-8 px-8">
             {/* Title */}
-            <h1 className="text-2xl font-bold text-gray-900 mb-8">Log in to PDF Search</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-8">Welcome to PDF Search</h1>
 
             {isLocalDev && (
               <>

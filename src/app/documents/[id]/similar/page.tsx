@@ -16,6 +16,11 @@ import {
   JURISDICTION_OPTIONS
 } from '@/lib/metadata-constants'
 import { SourceDocumentActions } from '@/components/similarity/source-document-actions'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'General Search | PDF Search',
+}
 
 interface PageProps {
   params: Promise<{ id: string }>
