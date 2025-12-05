@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { DatabaseDocument as Document } from '@/types/external-apis'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -20,7 +21,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import type { KeywordSearchResponse } from '@/types/search'
 import {
-  FileText,
   Target,
   Search,
   Filter,
@@ -1159,7 +1159,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
         }
       default:
         return {
-          icon: FileText,
+          icon: AlertCircle,
           color: 'bg-gray-50 text-gray-700 border-gray-200',
           label: 'Unknown'
         }
@@ -1531,7 +1531,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
           {filteredDocuments.length === 0 ? (
             <Card className="card-enhanced">
               <CardContent className="flex flex-col items-center justify-center p-12">
-                <FileText className="h-12 w-12 text-gray-400 mb-4" />
+                <Image src="/logo/pdf.svg" alt="PDF" width={48} height={48} className="opacity-40 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
                   No documents to show
                 </h3>
@@ -1666,9 +1666,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                           {/* Name Column */}
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              <div className="p-2 bg-blue-50 rounded-lg">
-                                <FileText className="h-4 w-4 text-blue-600" />
-                              </div>
+                              <Image src="/logo/pdf.svg" alt="PDF" width={28} height={28} />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                   {document.status === 'completed' ? (

@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Image from 'next/image'
 import { DatabaseDocument as Document } from '@/types/external-apis'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
-  FileText,
   Download,
   GitCompare,
   Scale,
@@ -257,7 +257,7 @@ export function SearchResultsTable({
       <Card className="card-enhanced">
         <div className="flex items-center justify-center p-12">
           <div className="flex flex-col items-center">
-            <FileText className="h-12 w-12 text-gray-400 mb-4" />
+            <Image src="/logo/pdf.svg" alt="PDF" width={48} height={48} className="opacity-40 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               No Similar Documents Found
             </h3>
@@ -384,9 +384,7 @@ export function SearchResultsTable({
                 {/* Name Column */}
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 ${themeColors.iconBg} rounded-lg`}>
-                      <FileText className={`h-4 w-4 ${themeColors.iconColor}`} />
-                    </div>
+                    <Image src="/logo/pdf.svg" alt="PDF" width={16} height={16} />
                     <div className="flex-1 min-w-0">
                       <button
                         onClick={() => viewPdf(result.document)}

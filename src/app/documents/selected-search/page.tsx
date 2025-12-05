@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import type { DatabaseDocument as AppDocument } from '@/types/external-apis'
 import { DashboardLayout } from '@/components/dashboard/layout'
@@ -8,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   ArrowLeft,
-  FileText,
   Users,
   Target,
   Scale,
@@ -124,9 +124,7 @@ export default async function SelectedSearchPage({ searchParams }: PageProps) {
             <CardContent>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 bg-emerald-100 rounded-lg">
-                    <FileText className="h-6 w-6 text-emerald-600" />
-                  </div>
+                  <Image src="/logo/pdf.svg" alt="PDF" width={24} height={24} />
                   <div className="space-y-2">
                     <h3 className="font-semibold text-gray-900">
                       {sourceDocument.title}

@@ -9,11 +9,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import type { KeywordSearchResult, KeywordMatch } from '@/types/search'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { FileText, Eye, ChevronDown, ChevronUp } from 'lucide-react'
+import { Eye, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface KeywordResultsProps {
   results: KeywordSearchResult[]
@@ -168,7 +169,7 @@ export function KeywordResults({
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <Image src="/logo/pdf.svg" alt="PDF" width={48} height={48} className="opacity-40 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No results found</h3>
           <p className="text-gray-600">
             No documents contain the keyword{query.includes(' ') ? 's' : ''} &quot;{query}&quot;
@@ -216,7 +217,7 @@ export function KeywordResults({
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                    <Image src="/logo/pdf.svg" alt="PDF" width={16} height={16} className="flex-shrink-0" />
                     <CardTitle className="text-base truncate">
                       {doc.title}
                     </CardTitle>

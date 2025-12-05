@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Upload, FileText, Loader2, Scale, UserCircle, ClipboardList, Globe, AlertTriangle, CheckCircle, Info } from 'lucide-react'
+import { Upload, Loader2, Scale, UserCircle, ClipboardList, Globe, AlertTriangle, CheckCircle, Info } from 'lucide-react'
 import { useFileValidation } from '@/lib/file-validation'
 import { 
   LAW_FIRM_OPTIONS, 
@@ -346,9 +347,9 @@ const canUpload = () => {
       case 'validating':
         return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
       case 'pending':
-        return uploadFile.validation?.isValid ? 
+        return uploadFile.validation?.isValid ?
           <CheckCircle className="h-4 w-4 text-green-500" /> :
-          <FileText className="h-4 w-4 text-gray-400" />
+          <Image src="/logo/pdf.svg" alt="PDF" width={16} height={16} />
       case 'uploading':
       case 'processing':
         return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
@@ -357,7 +358,7 @@ const canUpload = () => {
       case 'error':
         return <AlertTriangle className="h-4 w-4 text-red-500" />
       default:
-        return <FileText className="h-4 w-4 text-gray-400" />
+        return <Image src="/logo/pdf.svg" alt="PDF" width={16} height={16} />
     }
   }
 
@@ -404,7 +405,7 @@ const canUpload = () => {
           onDrop={handleDrop}
           onClick={() => document.getElementById('file-upload')?.click()}
         >
-          <FileText className="mx-auto h-10 w-10 text-gray-400 mb-3 sm:h-12 sm:w-12 sm:mb-4" />
+          <Image src="/logo/pdf.svg" alt="PDF" width={48} height={48} className="mx-auto opacity-40 mb-3 sm:mb-4" />
           <p className="text-sm text-gray-600 mb-1.5 sm:mb-2">
             Drop PDF files here or click to browse
           </p>

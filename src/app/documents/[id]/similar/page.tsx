@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardLayout } from '@/components/dashboard/layout'
 import { SimilaritySearchForm } from '@/components/similarity/similarity-search-form'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { DatabaseDocument as AppDocument } from '@/types/external-apis'
-import { ArrowLeft, FileText, Sparkles, Target, Scale, UserCircle, ClipboardList, Globe } from 'lucide-react'
+import { ArrowLeft, Sparkles, Target, Scale, UserCircle, ClipboardList, Globe } from 'lucide-react'
 import { formatUploadDate } from '@/lib/date-utils'
 import {
   LAW_FIRM_OPTIONS,
@@ -95,9 +96,7 @@ export default async function SimilarDocumentsPage({ params }: PageProps) {
           <CardContent>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <FileText className="h-6 w-6 text-blue-600" />
-                </div>
+                <Image src="/logo/pdf.svg" alt="PDF" width={24} height={24} />
                 <div className="space-y-2">
                   <h3 className="font-semibold text-gray-900">
                     {document.title}
