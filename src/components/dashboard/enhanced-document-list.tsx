@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { DatabaseDocument as Document } from '@/types/external-apis'
+import { DatabaseDocument as BaseDocument } from '@/types/external-apis'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -61,6 +61,11 @@ import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import { clientLogger } from '@/lib/client-logger'
 import { viewDocument, downloadDocument } from '@/lib/document-actions'
 import { useResizableColumns } from '@/hooks/useResizableColumns'
+
+type Document = BaseDocument & {
+  updated_by_name?: string | null
+  updated_by_email?: string | null
+}
 
 interface DocumentListProps {
   refreshTrigger?: number
@@ -1751,11 +1756,19 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                           </TableCell>
 
                           {/* Last Modified Column */}
-                          <TableCell>
-                            <div className="text-xs text-gray-600">
-                              {format(new Date(document.updated_at), 'MMM dd, yyyy HH:mm')}
-                            </div>
-                          </TableCell>
+                    <TableCell>
+                      <div className="text-xs text-gray-600">
+                        {format(new Date(document.updated_at), 'MMM dd, yyyy HH:mm')}
+                        {(() => {
+                          const name = document.updated_by_name?.trim()
+                          const email = document.updated_by_email?.trim()
+                          if (name || email) {
+                            return ` by ${name || email}`
+                          }
+                          return ' by Unknown user'
+                        })()}
+                      </div>
+                    </TableCell>
 
                           {/* Actions Column */}
                           <TableCell className="text-right">

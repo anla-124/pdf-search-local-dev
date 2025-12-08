@@ -4,6 +4,8 @@ import { PaginationUtils, DatabasePagination } from '@/lib/utils/pagination'
 import { DatabaseDocumentWithContent } from '@/types/external-apis'
 import { logger } from '@/lib/logger'
 import type { PostgrestResponse } from '@supabase/supabase-js'
+import { createServiceClient, releaseServiceClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   try {
@@ -129,11 +131,78 @@ export async function GET(request: NextRequest) {
       return doc
     }) || []
 
+    // Enrich with user display information (full name or email) via service role
+    const uniqueUserIds = Array.from(new Set(flattenedDocuments.map(doc => doc.user_id).filter(Boolean)))
+    const userDisplayMap: Record<string, { name: string | null; email: string | null }> = {}
+
+    // Prefer a dedicated admin client (service role) for auth lookups
+    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const adminKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    let serviceClient: Awaited<ReturnType<typeof createServiceClient>> | undefined
+    try {
+      if (adminUrl && adminKey) {
+        const adminClient = createSupabaseAdminClient(adminUrl, adminKey)
+
+        await Promise.all(uniqueUserIds.map(async userId => {
+          try {
+            const { data, error } = await adminClient.auth.admin.getUserById(userId)
+            if (error) {
+              logger.warn('Documents API: failed to fetch user for display', { userId, error: error.message })
+              return
+            }
+            const fullName = typeof data?.user?.user_metadata?.full_name === 'string'
+              ? (data.user.user_metadata.full_name as string)
+              : null
+            const email = data?.user?.email ?? null
+            userDisplayMap[userId] = { name: fullName, email }
+          } catch (err) {
+            logger.warn('Documents API: user lookup error', { userId, error: err instanceof Error ? err.message : String(err) })
+          }
+        }))
+      } else {
+        // Fallback to pooled service client if admin key is missing
+        const poolClient = await createServiceClient()
+        serviceClient = poolClient
+
+        await Promise.all(uniqueUserIds.map(async userId => {
+          try {
+            const { data, error } = await poolClient.auth.admin.getUserById(userId)
+            if (error) {
+              logger.warn('Documents API: failed to fetch user for display (pool)', { userId, error: error.message })
+              return
+            }
+            const fullName = typeof data?.user?.user_metadata?.full_name === 'string'
+              ? (data.user.user_metadata.full_name as string)
+              : null
+            const email = data?.user?.email ?? null
+            userDisplayMap[userId] = { name: fullName, email }
+          } catch (err) {
+            logger.warn('Documents API: user lookup error (pool)', { userId, error: err instanceof Error ? err.message : String(err) })
+          }
+        }))
+      }
+    } catch (err) {
+      logger.warn('Documents API: service client unavailable for user display', { error: err instanceof Error ? err.message : String(err) })
+    } finally {
+      if (serviceClient) releaseServiceClient(serviceClient)
+    }
+
+    const enhancedDocuments = flattenedDocuments.map(doc => {
+      const display = userDisplayMap[doc.user_id]
+      // Prefer explicit full_name; fallback to first part of email; else null
+      const derivedName = display?.name?.trim() || (display?.email ? display.email.split('@')[0] : null)
+      return {
+        ...doc,
+        updated_by_name: derivedName,
+        updated_by_email: display?.email ?? null
+      }
+    })
+
     logger.info('Documents API: returned documents', { userId, count: flattenedDocuments.length, documentIds: flattenedDocuments.map(doc => doc.id) })
 
     // Create paginated response
     const responseData = PaginationUtils.createPaginatedResponse(
-      flattenedDocuments,
+      enhancedDocuments,
       count || 0,
       paginationParams,
       (request.url || '').split('?')[0] || '/api/documents',

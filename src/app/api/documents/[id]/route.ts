@@ -6,6 +6,8 @@ import { DatabaseDocumentWithContent } from '@/types/external-apis'
 import { logger } from '@/lib/logger'
 import { throttling } from '@/lib/concurrency-limiter'
 import { queueQdrantDeletion } from '@/lib/qdrant-cleanup-worker'
+import { createServiceClient, releaseServiceClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js'
 
 export async function GET(
   request: NextRequest,
@@ -235,14 +237,63 @@ export async function PATCH(
 
       const newFilepath = directoryPath + newFilename
 
-      // 3. Move the file in Supabase Storage
-      const { error: moveError } = await supabase.storage
-        .from('documents')
-        .move(oldFilepath, newFilepath)
+      // 3. Use service role for storage rename to avoid permission edge cases
+      let storageClient
+      try {
+        storageClient = await createServiceClient()
+        const directoryPath = oldFilepath.substring(0, lastSlashIndex)
+        const sourceFilename = oldFilepath.substring(lastSlashIndex + 1)
+        const targetFilename = newFilename
 
-      if (moveError) {
-        logger.error('Documents API: storage file move error', moveError)
-        return NextResponse.json({ error: 'Failed to rename document in storage.' }, { status: 500 })
+        // Verify source exists
+        const { data: sourceList, error: sourceListError } = await storageClient.storage
+          .from('documents')
+          .list(directoryPath || undefined)
+
+        if (sourceListError) {
+          logger.error('Documents API: failed to list source directory', undefined, { directoryPath, error: sourceListError.message })
+          return NextResponse.json({ error: 'Failed to verify source file.' }, { status: 500 })
+        }
+
+        const sourceExists = Array.isArray(sourceList) && sourceList.some(item => item.name === sourceFilename)
+        if (!sourceExists) {
+          logger.error('Documents API: source file missing during rename', undefined, { oldFilepath, newFilepath })
+          return NextResponse.json({ error: 'Original file not found in storage.' }, { status: 404 })
+        }
+
+        // Check if target exists and remove it to allow copy
+        const targetExists = Array.isArray(sourceList) && sourceList.some(item => item.name === targetFilename)
+        if (targetExists) {
+          const { error: deleteTargetError } = await storageClient.storage
+            .from('documents')
+            .remove([newFilepath])
+
+          if (deleteTargetError) {
+            logger.error('Documents API: failed to delete existing target before rename', undefined, { newFilepath, error: deleteTargetError.message })
+            return NextResponse.json({ error: 'Failed to prepare target file for rename.' }, { status: 500 })
+          }
+        }
+
+        const { error: copyError } = await storageClient.storage
+          .from('documents')
+          .copy(oldFilepath, newFilepath)
+
+        if (copyError) {
+          logger.error('Documents API: storage file copy error', undefined, { oldFilepath, newFilepath, error: copyError.message })
+          return NextResponse.json({ error: 'Failed to rename document in storage.' }, { status: 500 })
+        }
+
+        if (newFilepath !== oldFilepath) {
+          const { error: deleteOldError } = await storageClient.storage
+            .from('documents')
+            .remove([oldFilepath])
+
+          if (deleteOldError) {
+            logger.warn('Documents API: failed to delete old file after copy', { oldFilepath, newFilepath, error: deleteOldError.message })
+          }
+        }
+      } finally {
+        if (storageClient) releaseServiceClient(storageClient)
       }
 
       // 4. Prepare database update object (use sanitized title)
@@ -264,7 +315,7 @@ export async function PATCH(
       .maybeSingle<DatabaseDocumentWithContent>()
 
     if (updateError) {
-      logger.error('Database update error', updateError as Error, { documentId: id })
+      logger.error('Database update error', undefined, { documentId: id, error: updateError.message })
       return NextResponse.json({ error: 'Failed to update document' }, { status: 500 })
     }
 
@@ -300,20 +351,51 @@ export async function PATCH(
         await updateDocumentMetadataInQdrant(id, vectorMetadata)
         logger.info('Documents API: Qdrant metadata updated', { documentId: id })
       } catch (qdrantError) {
-        logger.error(
-          'Documents API: Qdrant metadata update error (non-fatal)',
-          qdrantError instanceof Error ? qdrantError : new Error(String(qdrantError)),
-          { documentId: id }
-        )
+        logger.error('Documents API: Qdrant metadata update error (non-fatal)', undefined, {
+          documentId: id,
+          error: qdrantError instanceof Error ? qdrantError.message : String(qdrantError)
+        })
         // Don't fail the entire request if Qdrant update fails
         // The database update was successful, which is the primary concern
       }
     }
 
+    // Resolve display name/email for immediate UI display
+    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const adminKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    let displayName: string | null = null
+    let displayEmail: string | null = null
+
+    if (adminUrl && adminKey) {
+      try {
+        const adminClient = createSupabaseAdminClient(adminUrl, adminKey)
+        const { data, error } = await adminClient.auth.admin.getUserById(userId)
+        if (!error && data?.user) {
+          const fullName = typeof data.user.user_metadata?.full_name === 'string'
+            ? (data.user.user_metadata.full_name as string).trim()
+            : ''
+          displayEmail = data.user.email ?? null
+          const emailPrefix = displayEmail ? displayEmail.split('@')[0] : null
+          displayName = fullName || emailPrefix || null
+        }
+      } catch (err) {
+        logger.warn('Documents API: failed to fetch user display for PATCH response', { userId, error: err instanceof Error ? err.message : String(err) })
+      }
+    }
+
+    const safeDisplayEmail: string | null = displayEmail ?? null
+    const safeDisplayName: string | null = (displayName ?? (safeDisplayEmail ? safeDisplayEmail.split('@')[0] : null)) ?? null
+
+    const enrichedDocument = {
+      ...updatedDocument,
+      updated_by_name: safeDisplayName,
+      updated_by_email: safeDisplayEmail
+    }
+
     // Log the successful update activity
     await activityLogger.logActivity({
       userId: userId,
-      userEmail: '',
+      userEmail: safeDisplayEmail || '',
       action: 'upload',
       resourceType: 'document',
       resourceId: id,
@@ -325,10 +407,12 @@ export async function PATCH(
     }, request)
 
     logger.info('Documents API: document updated successfully', { documentId: id })
-    return NextResponse.json(updatedDocument)
+    return NextResponse.json(enrichedDocument)
 
   } catch (error) {
-    logger.error('Documents API: document update error', error instanceof Error ? error : new Error(String(error)))
+    logger.error('Documents API: document update error', error instanceof Error ? error : undefined, {
+      error: error instanceof Error ? error.message : String(error)
+    })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
