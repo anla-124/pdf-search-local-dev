@@ -48,13 +48,9 @@ export async function stage2FinalScoring(
 
   const startTime = Date.now()
 
-  // Read thresholds from environment variables
-  const defaultThreshold = parseFloat(process.env['STAGE2_THRESHOLD'] || '0.90')
-  const defaultJaccardThreshold = parseFloat(process.env['STAGE2_JACCARD_THRESHOLD'] || '0')
-
   const {
     parallelWorkers = 28,
-    threshold = defaultThreshold,
+    threshold = 0.90,
     timeout = 180000
   } = options
 
@@ -111,7 +107,7 @@ export async function stage2FinalScoring(
 
     const matchOptions = {
       threshold,
-      jaccardThreshold: defaultJaccardThreshold
+      jaccardThreshold: 0.60
     }
 
     const batchPromises = batches.map(batch =>
@@ -353,6 +349,8 @@ async function fetchDocumentChunks(
     const allChunks: {
       chunk_index: number
       page_number: number | null
+      start_page_number: number | null
+      end_page_number: number | null
       embedding: number[] | string
       chunk_text: string | null
       character_count: number | null
@@ -364,13 +362,15 @@ async function fetchDocumentChunks(
 
       let query = supabase
         .from('document_embeddings')
-        .select('chunk_index, page_number, embedding, chunk_text, character_count')
+        .select('chunk_index, page_number, start_page_number, end_page_number, embedding, chunk_text, character_count')
         .eq('document_id', documentId)
 
       if (options.pageRange) {
-        query = query
-          .gte('page_number', options.pageRange.start_page)
-          .lte('page_number', options.pageRange.end_page)
+        // Use overlap detection for multi-page chunks (matches orchestrator logic)
+        query = query.or(
+          `and(start_page_number.lte.${options.pageRange.end_page},end_page_number.gte.${options.pageRange.start_page}),` +
+          `and(start_page_number.is.null,page_number.gte.${options.pageRange.start_page},page_number.lte.${options.pageRange.end_page})`
+        )
       }
 
       const { data, error } = await query

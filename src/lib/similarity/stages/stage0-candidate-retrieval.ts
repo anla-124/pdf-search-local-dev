@@ -261,10 +261,48 @@ export async function stage0CandidateRetrieval(
 
   } catch (error) {
     const timeMs = Date.now() - startTime
+
+    // Enhanced error logging with safe property access
+    const errorObj = error as any
     logger.error(
       'Stage 0 failed',
       error instanceof Error ? error : new Error(String(error)),
-      { sourceDocId, durationMs: timeMs }
+      {
+        sourceDocId,
+        durationMs: timeMs,
+        // Safely access nested error properties
+        errorDetails: {
+          message: errorObj?.message,
+          name: errorObj?.name,
+          ...(errorObj?.response && {
+            response: {
+              data: errorObj.response.data,
+              status: errorObj.response.status,
+              statusText: errorObj.response.statusText,
+            }
+          }),
+          ...(errorObj?.config?.data && {
+            requestData: errorObj.config.data
+          }),
+          // Catch-all for unexpected error shapes
+          fullError: JSON.stringify(errorObj, Object.getOwnPropertyNames(errorObj))
+        },
+        // Log what we tried to send
+        queryContext: {
+          filters,
+          qdrantFilter: convertToQdrantFilter({
+            ...filters,
+            document_id: sanitizeDocumentIdFilter(
+              Object.prototype.hasOwnProperty.call(filters, 'document_id')
+                ? (filters as Record<string, unknown>)['document_id']
+                : undefined,
+              sourceDocId
+            )
+          }),
+          collectionName: process.env['QDRANT_COLLECTION_NAME'] || 'documents',
+          topK
+        }
+      }
     )
     throw error
   } finally {

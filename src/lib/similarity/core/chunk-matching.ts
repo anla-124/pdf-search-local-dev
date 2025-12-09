@@ -13,7 +13,7 @@ import { hasSufficientEvidence } from './adaptive-scoring'
 
 interface MatchingOptions {
   primaryThreshold?: number    // Cosine similarity threshold (default: 0.90)
-  jaccardThreshold?: number    // Jaccard similarity threshold (default: 0, disabled)
+  jaccardThreshold?: number    // Jaccard similarity threshold (default: 0.60)
 }
 
 /**
@@ -32,10 +32,10 @@ export async function findBidirectionalMatches(
 ): Promise<ChunkMatch[] | null> {
 
   const options: MatchingOptions = typeof thresholdOrOptions === 'number'
-    ? { primaryThreshold: thresholdOrOptions, jaccardThreshold: 0 }
+    ? { primaryThreshold: thresholdOrOptions, jaccardThreshold: 0.60 }
     : {
         primaryThreshold: thresholdOrOptions.primaryThreshold ?? 0.90,
-        jaccardThreshold: thresholdOrOptions.jaccardThreshold ?? 0
+        jaccardThreshold: thresholdOrOptions.jaccardThreshold ?? 0.60
       }
 
   // Direction A→B: For each chunk in A, find best match in B
@@ -98,7 +98,7 @@ function findBestMatches(
 ): Map<string, ChunkMatch> {
 
   const cosineThreshold = options.primaryThreshold ?? 0.90
-  const jaccardThreshold = options.jaccardThreshold ?? 0
+  const jaccardThreshold = options.jaccardThreshold ?? 0.60
   const jaccardEnabled = jaccardThreshold > 0
 
   const matches = new Map<string, ChunkMatch>()

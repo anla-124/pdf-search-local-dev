@@ -247,9 +247,6 @@ export async function executeSimilaritySearch(
       })
     }
 
-    // Read threshold default from environment variable
-    const defaultThreshold = parseFloat(process.env['STAGE2_THRESHOLD'] || '0.90')
-
     const stage2Results = await stage2FinalScoring(
       {
         ...sourceDoc,
@@ -259,7 +256,7 @@ export async function executeSimilaritySearch(
       stage1Result.candidateIds,  // Only candidates from Stage 1!
       {
         parallelWorkers: stage2Workers,
-        threshold: options.stage2_threshold ?? defaultThreshold,
+        threshold: options.stage2_threshold ?? 0.90,
         timeout: options.stage2_timeout ?? 180000,
         sourceChunksOverride: sourceChunks,
         sourcePageRange

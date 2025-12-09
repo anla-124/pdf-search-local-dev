@@ -86,6 +86,31 @@ async function initQdrantCollection() {
     })
     console.log('   ✓ page_number index created')
 
+    // Business metadata indexes for filtering
+    await client.createPayloadIndex(collectionName, {
+      field_name: 'law_firm',
+      field_schema: 'keyword'
+    })
+    console.log('   ✓ law_firm index created')
+
+    await client.createPayloadIndex(collectionName, {
+      field_name: 'fund_manager',
+      field_schema: 'keyword'
+    })
+    console.log('   ✓ fund_manager index created')
+
+    await client.createPayloadIndex(collectionName, {
+      field_name: 'fund_admin',
+      field_schema: 'keyword'
+    })
+    console.log('   ✓ fund_admin index created')
+
+    await client.createPayloadIndex(collectionName, {
+      field_name: 'jurisdiction',
+      field_schema: 'keyword'
+    })
+    console.log('   ✓ jurisdiction index created')
+
     console.log('\n🎉 Qdrant collection initialized successfully!\n')
 
     // Display collection info
