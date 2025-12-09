@@ -242,43 +242,27 @@ export async function PATCH(
       try {
         storageClient = await createServiceClient()
         const directoryPath = oldFilepath.substring(0, lastSlashIndex)
-        const sourceFilename = oldFilepath.substring(lastSlashIndex + 1)
-        const targetFilename = newFilename
 
-        // Verify source exists
-        const { data: sourceList, error: sourceListError } = await storageClient.storage
+        // Delete target if it exists to avoid collisions
+        const { error: deleteTargetError } = await storageClient.storage
           .from('documents')
-          .list(directoryPath || undefined)
+          .remove([newFilepath])
 
-        if (sourceListError) {
-          logger.error('Documents API: failed to list source directory', undefined, { directoryPath, error: sourceListError.message })
-          return NextResponse.json({ error: 'Failed to verify source file.' }, { status: 500 })
+        if (deleteTargetError) {
+          logger.debug('Documents API: target delete (pre-copy) returned error (may be non-existent)', { newFilepath, error: deleteTargetError.message })
         }
 
-        const sourceExists = Array.isArray(sourceList) && sourceList.some(item => item.name === sourceFilename)
-        if (!sourceExists) {
-          logger.error('Documents API: source file missing during rename', undefined, { oldFilepath, newFilepath })
-          return NextResponse.json({ error: 'Original file not found in storage.' }, { status: 404 })
-        }
-
-        // Check if target exists and remove it to allow copy
-        const targetExists = Array.isArray(sourceList) && sourceList.some(item => item.name === targetFilename)
-        if (targetExists) {
-          const { error: deleteTargetError } = await storageClient.storage
-            .from('documents')
-            .remove([newFilepath])
-
-          if (deleteTargetError) {
-            logger.error('Documents API: failed to delete existing target before rename', undefined, { newFilepath, error: deleteTargetError.message })
-            return NextResponse.json({ error: 'Failed to prepare target file for rename.' }, { status: 500 })
-          }
-        }
-
+        // Attempt copy; handle missing source explicitly
         const { error: copyError } = await storageClient.storage
           .from('documents')
           .copy(oldFilepath, newFilepath)
 
         if (copyError) {
+          const msg = (copyError as { message?: string })?.message?.toLowerCase() || ''
+          if (msg.includes('not found')) {
+            logger.error('Documents API: source file missing during rename', undefined, { oldFilepath, newFilepath })
+            return NextResponse.json({ error: 'Original file not found in storage.' }, { status: 404 })
+          }
           logger.error('Documents API: storage file copy error', undefined, { oldFilepath, newFilepath, error: copyError.message })
           return NextResponse.json({ error: 'Failed to rename document in storage.' }, { status: 500 })
         }
@@ -380,6 +364,20 @@ export async function PATCH(
         }
       } catch (err) {
         logger.warn('Documents API: failed to fetch user display for PATCH response', { userId, error: err instanceof Error ? err.message : String(err) })
+      }
+    }
+
+    // Fallback: use current session user if admin lookup failed
+    if (!displayName || !displayEmail) {
+      const { data: sessionUser } = await supabase.auth.getUser()
+      if (sessionUser?.user) {
+        const fullName = typeof sessionUser.user.user_metadata?.full_name === 'string'
+          ? (sessionUser.user.user_metadata.full_name as string).trim()
+          : ''
+        const email = sessionUser.user.email ?? null
+        const emailPrefix = email ? email.split('@')[0] : null
+        displayEmail = displayEmail ?? email ?? null
+        displayName = displayName ?? (fullName || emailPrefix || null)
       }
     }
 
