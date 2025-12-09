@@ -111,6 +111,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortBy, setSortBy] = useState<string>('updated_at')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   // Metadata filters
   const [showFilters, setShowFilters] = useState(false)
@@ -2109,12 +2110,18 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
               return
             }
             setDeleteDialog({ document: null, isOpen: false, isDeleting: false })
+            setDeleteConfirmText('')
           }
         }}
       >
         <AlertDialogContent
           onKeyDown={event => {
-            if (event.key === 'Enter' && !deleteDialog.isDeleting && deleteDialog.document) {
+            if (
+              event.key === 'Enter' &&
+              !deleteDialog.isDeleting &&
+              deleteDialog.document &&
+              deleteConfirmText.trim() === 'delete-document'
+            ) {
               event.preventDefault()
               deleteDocument(deleteDialog.document.id)
             }
@@ -2127,6 +2134,17 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                 ? `Are you sure you want to delete "${deleteDialog.document.title}"? This action cannot be undone.`
                 : 'Are you sure you want to delete this document? This action cannot be undone.'}
             </AlertDialogDescription>
+            <div className="mt-3">
+              <p className="text-sm text-gray-600 mb-2">
+                Type <span className="font-semibold">delete-document</span> to confirm.
+              </p>
+              <Input
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder="delete-document"
+                autoFocus
+              />
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteDialog.isDeleting}>Cancel</AlertDialogCancel>
@@ -2136,9 +2154,8 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
                 if (!deleteDialog.document || deleteDialog.isDeleting) return
                 deleteDocument(deleteDialog.document.id)
               }}
-              disabled={deleteDialog.isDeleting}
+              disabled={deleteDialog.isDeleting || deleteConfirmText.trim() !== 'delete-document'}
               className="bg-red-600 hover:bg-red-700"
-              autoFocus
             >
               {deleteDialog.isDeleting ? (
                 <>

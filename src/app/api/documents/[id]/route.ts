@@ -241,8 +241,6 @@ export async function PATCH(
       let storageClient
       try {
         storageClient = await createServiceClient()
-        const directoryPath = oldFilepath.substring(0, lastSlashIndex)
-
         // Delete target if it exists to avoid collisions
         const { error: deleteTargetError } = await storageClient.storage
           .from('documents')
