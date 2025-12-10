@@ -3,7 +3,7 @@
 import { DatabaseDocument as Document } from '@/types/external-apis'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
-  Search
+  Sparkles
 } from 'lucide-react'
 import { SearchResultsTable } from './search-results-table'
 
@@ -52,8 +52,8 @@ export function SimilarityResultsV2({ results, sourceDocument, isLoading, maxRes
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Search className="h-5 w-5" />
-                  Similarity Results
+                  <Sparkles className="h-5 w-5 text-blue-500" />
+                  General Search Results
                 </CardTitle>
                 <CardDescription>
                   Showing {limitedResults.length} of {results.length} similar document{results.length !== 1 ? 's' : ''} to &quot;{sourceDocument.title}&quot;

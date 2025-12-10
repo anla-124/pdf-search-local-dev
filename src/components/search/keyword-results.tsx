@@ -170,12 +170,9 @@ export function KeywordResults({
       <Card>
         <CardContent className="p-8 text-center">
           <Image src="/logo/pdf.svg" alt="PDF" width={48} height={48} className="opacity-40 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No results found</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No documents found</h3>
           <p className="text-gray-600">
             No documents contain the keyword{query.includes(' ') ? 's' : ''} &quot;{query}&quot;
-          </p>
-          <p className="text-sm text-gray-500 mt-2">
-            Try different keywords or check your spelling
           </p>
         </CardContent>
       </Card>

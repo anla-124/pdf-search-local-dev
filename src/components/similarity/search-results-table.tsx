@@ -261,10 +261,6 @@ export function SearchResultsTable({
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               No Similar Documents Found
             </h3>
-            <p className="text-gray-500 text-center max-w-md">
-              Try adjusting your search parameters, lowering the minimum similarity threshold,
-              or removing filters to find more results.
-            </p>
           </div>
         </div>
       </Card>

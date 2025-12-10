@@ -1549,7 +1549,7 @@ export function EnhancedDocumentList({ refreshTrigger = 0 }: DocumentListProps) 
               <CardContent className="flex flex-col items-center justify-center p-12">
                 <Image src="/logo/pdf.svg" alt="PDF" width={48} height={48} className="opacity-40 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No documents to show
+                  No documents found
                 </h3>
               </CardContent>
             </Card>
