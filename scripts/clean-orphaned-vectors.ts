@@ -6,6 +6,11 @@
 /* eslint-disable no-console */
 import { createClient } from '@supabase/supabase-js'
 import { QdrantClient } from '@qdrant/js-client-rest'
+import { config } from 'dotenv'
+import path from 'path'
+
+// Load environment variables from .env.local
+config({ path: path.join(process.cwd(), '.env.local') })
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!

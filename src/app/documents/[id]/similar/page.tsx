@@ -45,11 +45,11 @@ export default async function SimilarDocumentsPage({ params }: PageProps) {
   }
 
   // Fetch the source document
+  // RLS policies handle access control - allow any @anduintransact.com user
   const { data: document, error } = await supabase
     .from('documents')
     .select('*')
     .eq('id', id)
-    .eq('user_id', user.id)
     .single<AppDocument>()
 
   if (error || !document) {

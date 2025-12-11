@@ -1,5 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
-import { SupabaseClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { logger } from '@/lib/logger'
 
 // Pool configuration - UNLIMITED for enterprise processing
@@ -194,20 +193,21 @@ export class SupabaseConnectionPool {
   }
 
   private async createServiceConnection(): Promise<PooledConnection> {
-    const client = createServerClient(
+    // Use createClient for service role authentication (not createServerClient)
+    // createServerClient is for cookie-based user auth, createClient is for service role
+    const client = createClient(
       process.env['NEXT_PUBLIC_SUPABASE_URL']!,
       process.env['SUPABASE_SERVICE_ROLE_KEY']!,
       {
-        cookies: {
-          get() {
-            return null
-          },
-        },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
       }
     )
 
     this.metrics.connectionsCreated++
-    
+
     return {
       client,
       isActive: false,

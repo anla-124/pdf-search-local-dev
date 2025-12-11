@@ -77,13 +77,13 @@ export default async function SelectedSearchPage({ searchParams }: PageProps) {
   }
 
   // Fetch the source document if provided
+  // RLS policies handle access control - allow any @anduintransact.com user
   let sourceDocument: AppDocument | null = null
   if (sourceId) {
     const { data: document, error } = await supabase
       .from('documents')
       .select('*')
       .eq('id', sourceId)
-      .eq('user_id', user.id)
       .single<AppDocument>()
 
     if (!error && document?.status === 'completed') {
