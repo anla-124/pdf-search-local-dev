@@ -19,6 +19,7 @@ import {
   JURISDICTION_OPTIONS,
 } from '@/lib/metadata-constants'
 import { clientLogger } from '@/lib/client-logger'
+import { cn } from '@/lib/utils'
 
 interface SimilaritySearchFormProps {
   documentId: string
@@ -58,6 +59,13 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
     }
     return undefined
   })()
+  const isPageRangeInvalid = isPageRangeActive && pageRangeError !== undefined
+  const isPageRangeValid = isPageRangeActive && pageRangeError === undefined && startPage !== undefined && endPage !== undefined
+  const pageRangeInputClass = cn(
+    'h-8 w-24',
+    isPageRangeInvalid && 'border-destructive focus-visible:ring-destructive focus-visible:ring-2',
+    isPageRangeValid && 'border-emerald-500 focus-visible:ring-emerald-500 focus-visible:ring-2'
+  )
 
   const handleSearch = async () => {
     if (pageRangeError) {
@@ -142,15 +150,15 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Search Form */}
       <Card className="card-enhanced">
-        <CardHeader>
+        <CardHeader className="p-4 pb-2">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Search className="h-5 w-5" />
-                Similarity Search
+                Semantic Search Filters
               </CardTitle>
             </div>
             <Button
@@ -164,39 +172,44 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-2 p-4 pt-0">
           {/* Page Range Selection */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Search Scope</Label>
+          <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant={filters.page_range?.use_entire_document ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilters(prev => ({
-                  ...prev,
-                  page_range: {
-                    ...(prev.page_range ?? {}),
-                    use_entire_document: true
-                  }
-                }))}
-              >
-                Search entire document
-              </Button>
-              <Button
-                type="button"
-                variant={!filters.page_range?.use_entire_document ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilters(prev => ({
-                  ...prev,
-                  page_range: {
-                    ...(prev.page_range ?? {}),
-                    use_entire_document: false
-                  }
-                }))}
-              >
-                Search specific page range
-              </Button>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="searchScope"
+                    checked={filters.page_range?.use_entire_document === true}
+                    onChange={() => setFilters(prev => ({
+                      ...prev,
+                      page_range: {
+                        ...(prev.page_range ?? {}),
+                        use_entire_document: true
+                      }
+                    }))}
+                    className="h-4 w-4 cursor-pointer"
+                  />
+                  <span className="text-sm">Search entire document</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="searchScope"
+                    checked={filters.page_range?.use_entire_document === false}
+                    onChange={() => setFilters(prev => ({
+                      ...prev,
+                      page_range: {
+                        ...(prev.page_range ?? {}),
+                        use_entire_document: false
+                      }
+                    }))}
+                    className="h-4 w-4 cursor-pointer"
+                  />
+                  <span className="text-sm">Search specific page range</span>
+                </label>
+              </div>
               {!filters.page_range?.use_entire_document && (
                 <div className="flex items-center gap-2">
                   <Input
@@ -204,9 +217,9 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
                     type="number"
                     min="1"
                     placeholder="From"
-                    className="h-8 w-24"
+                    className={pageRangeInputClass}
                     value={startPage !== undefined ? startPage : ''}
-                    aria-invalid={pageRangeError !== undefined}
+                    aria-invalid={isPageRangeInvalid}
                     onChange={(e) => setFilters(prev => ({
                       ...prev,
                       page_range: {
@@ -221,9 +234,9 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
                     type="number"
                     min="1"
                     placeholder="To"
-                    className="h-8 w-24"
+                    className={pageRangeInputClass}
                     value={endPage !== undefined ? endPage : ''}
-                    aria-invalid={pageRangeError !== undefined}
+                    aria-invalid={isPageRangeInvalid}
                     onChange={(e) => setFilters(prev => ({
                       ...prev,
                       page_range: {
@@ -242,7 +255,7 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
                       onClick={handleStopSearch}
                       variant="destructive"
                       size="sm"
-                      className="h-8"
+                      className="h-9 min-w-[120px]"
                     >
                       <X className="h-3 w-3 mr-1" />
                       Stop
@@ -251,7 +264,7 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
                       disabled
                       variant="outline"
                       size="sm"
-                      className="h-8 px-6 min-w-[240px]"
+                      className="h-9 min-w-[240px]"
                     >
                       <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                       Searching...
@@ -261,7 +274,7 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
                   <Button
                     onClick={handleSearch}
                     size="sm"
-                    className="h-8 px-6 min-w-[240px]"
+                    className="h-9 min-w-[240px] font-semibold shadow-[0_12px_32px_-8px_rgba(37,99,235,0.45)] hover:shadow-[0_14px_36px_-6px_rgba(37,99,235,0.55)] hover:-translate-y-[1px] transition-transform"
                     disabled={pageRangeError !== undefined}
                   >
                     <Search className="h-3 w-3 mr-1" />
@@ -270,15 +283,10 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
                 )}
               </div>
             </div>
-            {pageRangeError && (
-              <p className="text-xs text-destructive">
-                {pageRangeError}
-              </p>
-            )}
           </div>
 
           {/* Business Metadata Filters */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label className="text-sm font-medium">Filters</Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
               <div className="space-y-1">
@@ -384,7 +392,7 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
 
             <div>
               <Label className="text-xs">Minimum Source Score: {Math.round(sourceMinScore * 100)}%</Label>
-              <div className="px-1 py-1">
+              <div className="px-1 py-0.5">
                 <Slider
                   min={0}
                   max={100}
@@ -393,7 +401,7 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
                   onValueChange={value => setSourceMinScore((value[0] ?? 70) / 100)}
                   className="w-full"
                 />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <div className="flex justify-between text-xs text-gray-500 mt-0.5">
                   <span>0%</span>
                   <span>50%</span>
                   <span>100%</span>
@@ -403,7 +411,7 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
 
             <div>
               <Label className="text-xs">Minimum Target Score: {Math.round(targetMinScore * 100)}%</Label>
-              <div className="px-1 py-1">
+              <div className="px-1 py-0.5">
                 <Slider
                   min={0}
                   max={100}
@@ -412,7 +420,7 @@ export function SimilaritySearchForm({ documentId, sourceDocument }: SimilarityS
                   onValueChange={value => setTargetMinScore((value[0] ?? 70) / 100)}
                   className="w-full"
                 />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <div className="flex justify-between text-xs text-gray-500 mt-0.5">
                   <span>0%</span>
                   <span>50%</span>
                   <span>100%</span>

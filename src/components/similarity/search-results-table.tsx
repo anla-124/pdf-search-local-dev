@@ -16,8 +16,7 @@ import {
   Globe,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown,
-  Loader2
+  ArrowUpDown
 } from 'lucide-react'
 import {
   LAW_FIRM_OPTIONS,
@@ -244,8 +243,13 @@ export function SearchResultsTable({
       <Card className="card-enhanced">
         <div className="flex items-center justify-center p-12">
           <div className="flex flex-col items-center">
-            <Loader2 className="h-12 w-12 text-blue-500 mb-4 animate-spin" />
-            <p className="text-gray-600">Searching for similar documents...</p>
+            <div className="relative h-12 w-12 mb-4">
+              <div className="h-full w-full rounded-full border-2 border-blue-100" />
+              <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-500 border-l-blue-500 animate-spin [animation-duration:900ms]" />
+            </div>
+            <p className="text-gray-600 animate-[fade_1.6s_ease-in-out_infinite]">
+              Searching for similar documents...
+            </p>
           </div>
         </div>
       </Card>
